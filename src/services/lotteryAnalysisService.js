@@ -7,7 +7,7 @@ import {
   getMostFrequentNumbers,
   summarizeContests
 } from "./statisticsService.js";
-import { predictByWeightedFrequency } from "./predictionService.js";
+import { predictBySeededRandomness, predictByWeightedFrequency } from "./predictionService.js";
 import { runAcumulouClassification } from "./mlAcumulouService.js";
 import { parsePositiveInt } from "../utils/query.js";
 
@@ -15,8 +15,29 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 200;
 const endpointCache = new Map();
 
+function buildNextDrawSeedAt(nextDrawDate) {
+  if (typeof nextDrawDate !== "string") {
+    return new Date().toISOString();
+  }
+
+  const parts = nextDrawDate.trim().split("/");
+
+  if (parts.length !== 3) {
+    return new Date().toISOString();
+  }
+
+  const [day, month, year] = parts;
+
+  if (!day || !month || !year) {
+    return new Date().toISOString();
+  }
+
+  // Horario padrao do sorteio no Brasil (BRT).
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T20:00:00-03:00`;
+}
+
 function buildCacheKey(lotteryKey, dataHash, params) {
-  return `${lotteryKey}:${dataHash}:${params.top}:${params.ultimos}:${params.medias}`;
+  return `${lotteryKey}:${dataHash}:${params.top}:${params.ultimos}:${params.medias}:${params.seedMode}:${params.seedAt}`;
 }
 
 function getCachedPayload(cacheKey) {
@@ -75,8 +96,29 @@ export async function analyzeLottery(lotteryKey, query = {}) {
   });
 
   const medias = parsePositiveInt(query?.medias, 10, { min: 1, max: 50 });
+  const customSeedAt = typeof query?.seedAt === "string" && query.seedAt.trim()
+    ? query.seedAt.trim()
+    : "";
 
-  const params = { top, ultimos, medias };
+  const requestedSeedMode = typeof query?.seedMode === "string"
+    ? query.seedMode.trim().toLowerCase()
+    : "";
+
+  let seedMode = requestedSeedMode;
+  let seedAt = customSeedAt;
+
+  if (requestedSeedMode === "now") {
+    seedAt = new Date().toISOString();
+  } else if (requestedSeedMode === "nextdraw") {
+    seedAt = buildNextDrawSeedAt(contests[0]?.dataProximoConcurso);
+  } else {
+    seedMode = "custom";
+    if (!seedAt) {
+      seedAt = buildNextDrawSeedAt(contests[0]?.dataProximoConcurso ?? contests[0]?.data);
+    }
+  }
+
+  const params = { top, ultimos, medias, seedMode, seedAt };
   const cacheKey = buildCacheKey(lotteryKey, dataHash, params);
   const cachedPayload = getCachedPayload(cacheKey);
 
@@ -105,6 +147,12 @@ export async function analyzeLottery(lotteryKey, query = {}) {
     prediction: predictByWeightedFrequency(draws, frequency, {
       totalNumbers: config.totalNumbers,
       pickCount: config.pickCount
+    }),
+    predictionSeeded: predictBySeededRandomness(draws, frequency, {
+      totalNumbers: config.totalNumbers,
+      pickCount: config.pickCount,
+      seedAt,
+      seedSalt: `${lotteryKey}:${dataHash}`
     }),
     recentContestAverages: calculatePerContestAverages(draws).slice(0, medias),
     acumulouMl: runAcumulouClassification(draws, {

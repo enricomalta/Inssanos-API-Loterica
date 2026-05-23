@@ -82,11 +82,25 @@ Exemplo com parametros:
 
 https://inssanos-api.vercel.app/api/mega?top=10&ultimos=500&medias=20
 
+Exemplo com horario seedado para predicao alternativa:
+
+https://inssanos-api.vercel.app/api/mega?top=10&ultimos=500&medias=20&seedAt=2026-05-24T20:00:00-03:00
+
+Exemplo com seed do horario atual:
+
+https://inssanos-api.vercel.app/api/mega?top=10&ultimos=500&medias=20&seedMode=now
+
+Exemplo com seed baseado no proximo sorteio:
+
+https://inssanos-api.vercel.app/api/mega?top=10&ultimos=500&medias=20&seedMode=nextDraw
+
 ## Parametros opcionais
 
 - top: quantidade de dezenas mais frequentes (padrao: 6)
 - ultimos: quantidade de concursos mais recentes para analisar (padrao: todos)
 - medias: quantidade de medias recentes retornadas (padrao: 10, max: 50)
+- seedAt: string usada como semente da predicao alternativa (ex.: horario exato do sorteio)
+- seedMode: now | nextDraw | custom (padrao: custom)
 
 Para /api/resultados:
 
@@ -126,8 +140,17 @@ A resposta inclui:
 - summary
 - topFrequent
 - prediction
+- predictionSeeded
 - recentContestAverages
 - acumulouMl
+
+Sobre predictionSeeded:
+
+- combina frequencia historica + aleatoriedade seedada
+- usa a chance matematica base por numero: pickCount / totalNumbers
+- com mesmo seedAt e mesmo dataset, o resultado e deterministico
+- seedMode=now usa o timestamp atual no momento da chamada
+- seedMode=nextDraw usa data do proximo concurso com horario padrao 20:00:00-03:00
 
 ## Cache e invalidacao
 
