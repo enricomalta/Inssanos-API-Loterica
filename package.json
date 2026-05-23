@@ -1,16 +1,18 @@
 {
   "name": "mega-node-vercel",
-  "version": "1.0.0",
+  "version": "1.5.0",
   "private": true,
   "type": "module",
-  "description": "Estudo da Mega-Sena em Node.js com dados locais para deploy na Vercel",
+  "description": "Algoritmo de loterias Caixa em Node.js com dados locais e scrapping oficial + Machine Learning com deploy na Vercel",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "npx vercel dev",
-    "dev:analyze": "node --watch src/index.js",
-    "dev:api": "npx vercel dev"
+    "dev": "node --watch src/index.js",
+    "vercel": "vercel dev"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
   }
 }

@@ -1,49 +1,34 @@
-import { loadMegaResults } from "./data/loadMegaResults.js";
-import { getLotteryConfig } from "./config/constants.js";
-import { extractAllDraws } from "./services/megaMapper.js";
-import {
-  calculateFrequency,
-  calculatePerContestAverages,
-  getMostFrequentNumbers,
-  summarizeContests
-} from "./services/statisticsService.js";
-import { predictByWeightedFrequency } from "./services/predictionService.js";
-import { runAcumulouClassification } from "./services/mlAcumulouService.js";
+import express from "express";
 
-async function main() {
-  const config = getLotteryConfig("mega");
-  const contests = await loadMegaResults();
-  const draws = extractAllDraws(contests);
-  const ultimos = 300;
-  const top = config.pickCount;
-  const medias = 5;
-  const filteredDraws = draws.slice(0, ultimos);
+import megaRoute from "../api/mega.js";
+import quinaRoute from "../api/quina.js";
+import lotofacilRoute from "../api/lotofacil.js";
+import duplaSenaRoute from "../api/duplasena.js";
 
-  const frequency = calculateFrequency(filteredDraws, config.totalNumbers);
-  const frequentTop6 = getMostFrequentNumbers(frequency, top);
-  const contestAverages = calculatePerContestAverages(filteredDraws);
-  const summary = summarizeContests(filteredDraws);
-  const prediction = predictByWeightedFrequency(filteredDraws, frequency, {
-    totalNumbers: config.totalNumbers,
-    pickCount: config.pickCount
+import resultadosRoute from "../api/resultados.js";
+import scrapeResultadoRoute from "../api/scrape-resultado.js";
+import atualizarResultadosRoute from "../api/atualizar-resultados.js";
+
+const app = express();
+
+const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || "0.0.0.0";
+
+app.use("/api/mega", megaRoute);
+app.use("/api/quina", quinaRoute);
+app.use("/api/lotofacil", lotofacilRoute);
+app.use("/api/duplasena", duplaSenaRoute);
+
+app.use("/api/resultados", resultadosRoute);
+app.use("/api/scrape-resultado", scrapeResultadoRoute);
+app.use("/api/atualizar-resultados", atualizarResultadosRoute);
+
+app.get("/", (req, res) => {
+  res.json({
+    status: "Mega Node API online"
   });
-  const acumulouMl = runAcumulouClassification(filteredDraws, {
-    expectedDezenas: config.pickCount
-  });
+});
 
-  console.log("=== Estudo Mega-Sena (Node) ===");
-  console.log("Parametros:", { ultimos, top, medias });
-  console.log("Resumo:", summary);
-  console.log("Top frequentes:", frequentTop6);
-  console.log("Previsao (heuristica de frequencia + media):", prediction);
-  console.log("Classificador acumulou:", acumulouMl);
-  console.log(
-    "Media dos concursos mais recentes:",
-    contestAverages.slice(0, medias)
-  );
-}
-
-main().catch((error) => {
-  console.error("Erro ao processar mega.json:", error.message);
-  process.exit(1);
+app.listen(PORT, HOST, () => {
+  console.log(`Servidor rodando em http://${HOST}:${PORT}`);
 });
