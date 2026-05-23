@@ -9,11 +9,15 @@ const URL_MEGA = "https://loterias.caixa.gov.br/Paginas/Mega-Sena.aspx";
 const URL_LOTOFACIL = "https://loterias.caixa.gov.br/paginas/lotofacil.aspx";
 const URL_QUINA = "https://loterias.caixa.gov.br/Paginas/Quina.aspx";
 const URL_DUPLASENA = "https://loterias.caixa.gov.br/Paginas/Dupla-Sena.aspx";
+const URL_PARAMS_CAIXA = "https://loterias.caixa.gov.br/Style%20Library/json/params.txt";
 
 const API_URL_MEGA = "https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena";
 const API_URL_LOTOFACIL = "https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil";
 const API_URL_QUINA = "https://servicebus2.caixa.gov.br/portaldeloterias/api/quina";
 const API_URL_DUPLASENA = "https://servicebus2.caixa.gov.br/portaldeloterias/api/duplasena";
+
+let caixaApiBaseCache = "";
+let caixaApiBaseCacheAt = 0;
 
 const LOTTERY_SOURCES = {
   mega: {
@@ -144,6 +148,92 @@ function buildApiCandidates(source) {
   return [source?.apiUrl, ...aliases].filter((value, index, list) => typeof value === "string" && value && list.indexOf(value) === index);
 }
 
+async function resolveCaixaApiBaseUrl() {
+  const now = Date.now();
+  const isCacheValid = caixaApiBaseCache && now - caixaApiBaseCacheAt < 30 * 60 * 1000;
+
+  if (isCacheValid) {
+    return caixaApiBaseCache;
+  }
+
+  try {
+    const response = await fetch(URL_PARAMS_CAIXA, {
+      headers: {
+        accept: "application/json, text/plain, */*",
+        "accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+        referer: "https://loterias.caixa.gov.br/",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+      }
+    });
+
+    if (!response.ok) {
+      return "";
+    }
+
+    const body = await response.text();
+    const parsed = JSON.parse(body);
+    const baseUrl = typeof parsed?.urlapiloterias === "string" ? parsed.urlapiloterias.trim() : "";
+
+    if (baseUrl) {
+      caixaApiBaseCache = baseUrl;
+      caixaApiBaseCacheAt = now;
+    }
+
+    return baseUrl;
+  } catch {
+    return "";
+  }
+}
+
+function expandApiCandidates(candidates, preferredBaseUrl) {
+  const expanded = new Set();
+
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string" || !candidate) {
+      continue;
+    }
+
+    expanded.add(candidate);
+
+    if (candidate.includes("servicebus2.caixa.gov.br")) {
+      expanded.add(candidate.replace("servicebus2.caixa.gov.br", "servicebus3.caixa.gov.br"));
+    }
+
+    if (preferredBaseUrl) {
+      try {
+        const parsed = new URL(candidate);
+        const marker = "/portaldeloterias";
+        const markerIndex = parsed.pathname.indexOf(marker);
+
+        if (markerIndex >= 0) {
+          const suffix = parsed.pathname.slice(markerIndex + marker.length);
+          const preferred = new URL(preferredBaseUrl.replace(/\/+$/, "") + suffix).toString();
+          expanded.add(preferred);
+        }
+      } catch {
+        // Ignora URL invalida e segue para os outros candidatos.
+      }
+    }
+  }
+
+  const expandedList = Array.from(expanded);
+
+  if (!preferredBaseUrl) {
+    return expandedList;
+  }
+
+  return expandedList.sort((a, b) => {
+    const aPreferred = a.startsWith(preferredBaseUrl);
+    const bPreferred = b.startsWith(preferredBaseUrl);
+
+    if (aPreferred === bPreferred) {
+      return 0;
+    }
+
+    return aPreferred ? -1 : 1;
+  });
+}
+
 function extractCookieHeader(response) {
   const directSetCookie = typeof response?.headers?.getSetCookie === "function" ? response.headers.getSetCookie() : [];
   const fallbackSetCookie = response?.headers?.get?.("set-cookie");
@@ -183,7 +273,9 @@ async function warmupLotterySession(source) {
 }
 
 async function fetchLotteryResult(source) {
-  const apiCandidates = buildApiCandidates(source);
+  const baseCandidates = buildApiCandidates(source);
+  const preferredBaseUrl = await resolveCaixaApiBaseUrl();
+  const apiCandidates = expandApiCandidates(baseCandidates, preferredBaseUrl);
   const maxAttempts = 3;
   let lastError = null;
 
