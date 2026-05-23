@@ -1,88 +1,151 @@
 # Mega Node Vercel
 
-Projeto de estudo da Mega-Sena em Node.js com arquitetura modular e leitura local de dados em `results/mega.json`.
+Projeto Node.js para analise de loterias da Caixa com dados locais em JSON e deploy na Vercel.
+
+Loterias suportadas:
+
+- Mega-Sena
+- Quina
+- Lotofacil
+- Dupla Sena
 
 ## Como funciona
 
-- Os concursos sao lidos diretamente de `../results/mega.json`.
-- Sempre que voce atualizar o JSON com novos concursos e fizer commit, a API passa a responder com os dados mais recentes.
-- A previsao e heuristica (nao garante resultado), baseada em frequencia historica e proximidade da media global.
+- Cada endpoint le um arquivo local em results.
+- A API calcula frequencia, resumo, previsao heuristica e classificacao de acumulou.
+- O cache usa memoria da instancia e invalida automaticamente quando o hash do JSON muda.
+
+Arquivos de dados oficiais:
+
+- results/mega.json
+- results/quina.json
+- results/lotofacil.json
+- results/duplasena.json
+
+## Atualizacao automatica dos resultados
+
+Para buscar o concurso mais recente das 4 loterias e atualizar os arquivos oficiais sem duplicar concurso:
+
+node api/resultsCaixa.js
+
+Esse script faz:
+
+- consulta dos dados oficiais da Caixa para 4 loterias
+- mapeamento para o mesmo schema dos arquivos em results
+- upsert por concurso (atualiza se existe, insere se nao existe)
+- ordenacao por concurso decrescente
+- geracao de preview em results/scraped
+
+Arquivos de preview:
+
+- results/scraped/mega.json
+- results/scraped/quina.json
+- results/scraped/lotofacil.json
+- results/scraped/duplasena.json
 
 ## Rodando localmente
 
 Analise em console (uma execucao):
 
-```bash
 npm start
-```
 
 Analise em modo watch:
 
-```bash
 npm run dev:analyze
-```
 
-API local (fica online aguardando chamadas):
+API local (Vercel dev):
 
-```bash
 npm run dev:api
-```
 
-Depois acesse no navegador ou cliente HTTP:
+Rotas locais:
 
-- `http://localhost:3000/api/mega`
-- `http://localhost:3000/api/quina`
-- `http://localhost:3000/api/lotofacil`
-- `http://localhost:3000/api/duplasena`
+- http://localhost:3000/api/mega
+- http://localhost:3000/api/quina
+- http://localhost:3000/api/lotofacil
+- http://localhost:3000/api/duplasena
 
-## Endpoint para Vercel
+## API em producao
 
-- Endpoints:
-	- `/api/mega`
-	- `/api/quina`
-	- `/api/lotofacil`
-	- `/api/duplasena`
-- Arquivos:
-	- `api/mega.js`
-	- `api/quina.js`
-	- `api/lotofacil.js`
-	- `api/duplasena.js`
-- Cache: memoria da instancia (TTL 5 min) + `Cache-Control` para CDN da Vercel + invalidacao por hash SHA-256 do JSON de cada loteria
+Base URL:
 
-Parametros opcionais de query:
+https://inssanos-api.vercel.app
 
-- `top` quantidade de dezenas mais frequentes (padrao: 6, max: 30)
-- `ultimos` quantidade de concursos mais recentes para analisar (padrao: todos)
-- `medias` quantidade de medias recentes retornadas (padrao: 10, max: 50)
+Rotas:
 
-Exemplo:
+- https://inssanos-api.vercel.app/api/mega
+- https://inssanos-api.vercel.app/api/quina
+- https://inssanos-api.vercel.app/api/lotofacil
+- https://inssanos-api.vercel.app/api/duplasena
+- https://inssanos-api.vercel.app/api/resultados?loteria=mega&ultimos=10
 
-```bash
-/api/mega?top=10&ultimos=500&medias=15
-```
+Exemplo com parametros:
 
-Resposta inclui:
+https://inssanos-api.vercel.app/api/mega?top=10&ultimos=500&medias=20
 
-- resumo geral dos concursos
-- dezenas mais frequentes (de acordo com `top`)
-- previsao heuristica de 6 dezenas
-- medias dos concursos mais recentes
-- classificador de `acumulou` (acuracia e probabilidade estimada)
+## Parametros opcionais
 
-Headers de cache:
+- top: quantidade de dezenas mais frequentes (padrao: 6)
+- ultimos: quantidade de concursos mais recentes para analisar (padrao: todos)
+- medias: quantidade de medias recentes retornadas (padrao: 10, max: 50)
 
-- `Cache-Control: public, max-age=0, s-maxage=300, stale-while-revalidate=600`
-- `X-Cache: MISS` na primeira execucao por combinacao de parametros
-- `X-Cache: HIT` nas proximas chamadas dentro do TTL
+Para /api/resultados:
 
-Invalidacao por hash:
+- loteria: mega | quina | lotofacil | duplasena (padrao: mega)
+- ultimos: quantidade de concursos retornados (padrao: todos)
 
-- A chave de cache inclui o hash SHA-256 do conteudo do JSON da loteria consultada
-- Quando voce atualiza o arquivo (novos concursos), o hash muda e o cache anterior deixa de ser reutilizado automaticamente
+## Rota de atualizacao com token
 
-Arquivos monitorados por endpoint:
+Endpoint:
 
-- `/api/mega` usa `results/mega.json`
-- `/api/quina` usa `results/quina.json`
-- `/api/lotofacil` usa `results/lotofacil.json`
-- `/api/duplasena` usa `results/duplasena.json`
+- POST https://inssanos-api.vercel.app/api/atualizar-resultados
+
+Seguranca:
+
+- definir env UPDATE_RESULTS_TOKEN
+- enviar token por Authorization: Bearer <token>
+- alternativa: header x-update-token ou query ?token=
+
+Exemplo com curl:
+
+curl -X POST https://inssanos-api.vercel.app/api/atualizar-resultados \
+	-H "Authorization: Bearer SEU_TOKEN"
+
+Observacao importante:
+
+- em Vercel Serverless, alteracoes em arquivos locais nao persistem entre invocacoes (filesystem somente leitura para deploy)
+- para persistencia real em producao, use banco/blob/kv ou atualize os JSONs no repositorio e redeploy
+
+## Estrutura da resposta
+
+A resposta inclui:
+
+- updatedAt
+- loteria
+- dataHash
+- params
+- summary
+- topFrequent
+- prediction
+- recentContestAverages
+- acumulouMl
+
+## Cache e invalidacao
+
+Headers usados:
+
+- Cache-Control: public, max-age=0, s-maxage=300, stale-while-revalidate=600
+- X-Cache: MISS na primeira execucao por combinacao de parametros
+- X-Cache: HIT nas chamadas seguintes dentro do TTL
+
+Invalidacao:
+
+- a chave de cache inclui hash SHA-256 do JSON da loteria
+- ao atualizar o arquivo de resultados, o hash muda e o cache antigo nao e reutilizado
+
+## Deploy na Vercel
+
+Arquivo de configuracao:
+
+- vercel.json
+
+O includeFiles garante que os JSONs de results sejam empacotados dentro das funcoes serverless, evitando erro ENOENT em producao.
