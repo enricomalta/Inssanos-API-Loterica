@@ -72,11 +72,23 @@ https://inssanos-api.vercel.app
 
 Rotas:
 
+Machine Learning Rotas:
 - https://inssanos-api.vercel.app/api/mega
 - https://inssanos-api.vercel.app/api/quina
 - https://inssanos-api.vercel.app/api/lotofacil
 - https://inssanos-api.vercel.app/api/duplasena
+
+Resultados Salvos:
 - https://inssanos-api.vercel.app/api/resultados?loteria=mega&ultimos=10
+- https://inssanos-api.vercel.app/api/resultados?loteria=quina&ultimos=10
+- https://inssanos-api.vercel.app/api/resultados?loteria=lotofacil&ultimos=10
+- https://inssanos-api.vercel.app/api/resultados?loteria=duplasena&ultimos=10
+
+Resultado Scrap Caixa Oficial:
+- https://inssanos-api.vercel.app/api/scrape-resultado?loteria=mega
+- https://inssanos-api.vercel.app/api/scrape-resultado?loteria=quina
+- https://inssanos-api.vercel.app/api/scrape-resultado?loteria=lotofacil
+- https://inssanos-api.vercel.app/api/scrape-resultado?loteria=duplasena
 
 Exemplo com parametros:
 
@@ -106,6 +118,11 @@ Para /api/resultados:
 
 - loteria: mega | quina | lotofacil | duplasena (padrao: mega)
 - ultimos: quantidade de concursos retornados (padrao: todos)
+
+Para /api/scrape-resultado:
+
+- loteria: mega | quina | lotofacil | duplasena (padrao: mega)
+- retorna apenas o ultimo resultado vindo da API da Caixa, sem atualizar arquivos locais
 
 ## Rota de atualizacao com token
 

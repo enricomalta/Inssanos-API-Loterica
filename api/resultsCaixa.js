@@ -175,6 +175,20 @@ async function scrapeAndSaveLottery(key, source) {
   };
 }
 
+async function scrapeLatestLottery(key, source) {
+  const raw = await fetchLotteryResult(source.apiUrl);
+  const mapped = mapToResultsSchema(raw, source.loteria);
+
+  return {
+    key,
+    pageUrl: source.pageUrl,
+    apiUrl: source.apiUrl,
+    concurso: mapped.concurso,
+    data: mapped.data,
+    contest: mapped
+  };
+}
+
 async function readJsonArray(filePath) {
   try {
     const raw = await fs.readFile(filePath, "utf-8");
@@ -237,6 +251,17 @@ export async function scrapeResultadosCaixa() {
   });
 
   return { sucesso, erros };
+}
+
+export async function scrapeUltimoResultadoCaixa(key) {
+  const normalizedKey = typeof key === "string" ? key.trim().toLowerCase() : "";
+  const source = LOTTERY_SOURCES[normalizedKey];
+
+  if (!source) {
+    throw new Error(`Loteria invalida: ${key}`);
+  }
+
+  return scrapeLatestLottery(normalizedKey, source);
 }
 
 if (process.argv[1] === __filename) {
