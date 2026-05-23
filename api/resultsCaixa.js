@@ -20,6 +20,7 @@ const LOTTERY_SOURCES = {
     loteria: "megasena",
     pageUrl: URL_MEGA,
     apiUrl: API_URL_MEGA,
+    apiUrlAliases: ["https://servicebus2.caixa.gov.br/portaldeloterias/api/megaSena"],
     outputFile: "mega.json"
   },
   lotofacil: {
@@ -38,6 +39,7 @@ const LOTTERY_SOURCES = {
     loteria: "duplasena",
     pageUrl: URL_DUPLASENA,
     apiUrl: API_URL_DUPLASENA,
+    apiUrlAliases: ["https://servicebus2.caixa.gov.br/portaldeloterias/api/duplaSena"],
     outputFile: "duplasena.json"
   }
 };
@@ -137,56 +139,63 @@ function mapToResultsSchema(raw, loteria) {
   };
 }
 
-async function fetchLotteryResult(apiUrl) {
+function buildApiCandidates(source) {
+  const aliases = Array.isArray(source?.apiUrlAliases) ? source.apiUrlAliases : [];
+  return [source?.apiUrl, ...aliases].filter((value, index, list) => typeof value === "string" && value && list.indexOf(value) === index);
+}
+
+async function fetchLotteryResult(source) {
+  const apiCandidates = buildApiCandidates(source);
   const maxAttempts = 3;
   let lastError = null;
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      const response = await fetch(apiUrl, {
-        headers: {
-          accept: "application/json, text/plain, */*",
-          "accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
-          origin: "https://loterias.caixa.gov.br",
-          referer: "https://loterias.caixa.gov.br/",
-          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+  for (const apiUrl of apiCandidates) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const response = await fetch(apiUrl, {
+          headers: {
+            accept: "application/json, text/plain, */*",
+            "accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+            origin: "https://loterias.caixa.gov.br",
+            referer: source?.pageUrl || "https://loterias.caixa.gov.br/",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+          }
+        });
+
+        if (response.ok) {
+          return response.json();
         }
-      });
 
-      if (response.ok) {
-        return response.json();
+        const isRetriable = response.status === 403 || response.status === 429 || response.status >= 500;
+        if (!isRetriable || attempt === maxAttempts) {
+          throw new Error(`Falha na consulta (${response.status}) em ${apiUrl}`);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, attempt * 400));
+      } catch (error) {
+        lastError = error;
+
+        const message = String(error?.message ?? "");
+        const shouldRetry =
+          attempt < maxAttempts &&
+          !message.includes("Falha na consulta (400)") &&
+          !message.includes("Falha na consulta (401)") &&
+          !message.includes("Falha na consulta (404)");
+
+        if (!shouldRetry) {
+          break;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, attempt * 400));
       }
-
-      const isRetriable = response.status === 403 || response.status === 429 || response.status >= 500;
-      if (!isRetriable || attempt === maxAttempts) {
-        throw new Error(`Falha na consulta (${response.status}) em ${apiUrl}`);
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, attempt * 400));
-      continue;
-    } catch (error) {
-      lastError = error;
-
-      const message = String(error?.message ?? "");
-      const shouldRetry =
-        attempt < maxAttempts &&
-        !message.includes("Falha na consulta (400)") &&
-        !message.includes("Falha na consulta (401)") &&
-        !message.includes("Falha na consulta (404)");
-
-      if (!shouldRetry) {
-        break;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, attempt * 400));
     }
   }
 
-  throw lastError ?? new Error(`Falha na consulta em ${apiUrl}`);
+  throw lastError ?? new Error(`Falha na consulta em ${apiCandidates[0] || "endpoint Caixa"}`);
 }
 
 async function scrapeAndSaveLottery(key, source) {
-  const raw = await fetchLotteryResult(source.apiUrl);
+  const raw = await fetchLotteryResult(source);
   const mapped = mapToResultsSchema(raw, source.loteria);
   const previewOutputDir = path.resolve(__dirname, "../results/scraped");
   const previewOutputPath = path.join(previewOutputDir, source.outputFile);
@@ -210,7 +219,7 @@ async function scrapeAndSaveLottery(key, source) {
 }
 
 async function scrapeLatestLottery(key, source) {
-  const raw = await fetchLotteryResult(source.apiUrl);
+  const raw = await fetchLotteryResult(source);
   const mapped = mapToResultsSchema(raw, source.loteria);
 
   return {
