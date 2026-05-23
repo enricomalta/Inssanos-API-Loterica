@@ -1,0 +1,98 @@
+[
+  {
+    "loteria": "lotofacil",
+    "concurso": 3692,
+    "data": "22/05/2026",
+    "local": "ESPAÇO DA SORTE em SÃO PAULO, SP",
+    "concursoEspecial": false,
+    "dezenasOrdemSorteio": [
+      "19",
+      "07",
+      "15",
+      "20",
+      "25",
+      "05",
+      "02",
+      "10",
+      "06",
+      "14",
+      "09",
+      "13",
+      "23",
+      "24",
+      "03"
+    ],
+    "dezenas": [
+      "02",
+      "03",
+      "05",
+      "06",
+      "07",
+      "09",
+      "10",
+      "13",
+      "14",
+      "15",
+      "19",
+      "20",
+      "23",
+      "24",
+      "25"
+    ],
+    "trevos": [],
+    "timeCoracao": null,
+    "mesSorte": null,
+    "premiacoes": [
+      {
+        "descricao": "15 acertos",
+        "faixa": 1,
+        "ganhadores": 1,
+        "valorPremio": 1229012.94
+      },
+      {
+        "descricao": "14 acertos",
+        "faixa": 2,
+        "ganhadores": 445,
+        "valorPremio": 827.27
+      },
+      {
+        "descricao": "13 acertos",
+        "faixa": 3,
+        "ganhadores": 11471,
+        "valorPremio": 35
+      },
+      {
+        "descricao": "12 acertos",
+        "faixa": 4,
+        "ganhadores": 125630,
+        "valorPremio": 14
+      },
+      {
+        "descricao": "11 acertos",
+        "faixa": 5,
+        "ganhadores": 587234,
+        "valorPremio": 7
+      }
+    ],
+    "estadosPremiados": [],
+    "observacao": "",
+    "acumulou": false,
+    "proximoConcurso": 3693,
+    "dataProximoConcurso": "23/05/2026",
+    "localGanhadores": [
+      {
+        "ganhadores": 1,
+        "municipio": "ITANHAEM",
+        "nomeFatansiaUL": "",
+        "posicao": 1,
+        "serie": "",
+        "uf": "SP"
+      }
+    ],
+    "valorArrecadado": 20787326,
+    "valorAcumuladoConcurso_0_5": 379772.92,
+    "valorAcumuladoConcursoEspecial": 108573590.73,
+    "valorAcumuladoProximoConcurso": 0,
+    "valorEstimadoProximoConcurso": 2000000
+  }
+]

@@ -1,0 +1,59 @@
+[
+  {
+    "loteria": "megasena",
+    "concurso": 3009,
+    "data": "16/05/2026",
+    "local": "ESPAÇO DA SORTE em SÃO PAULO, SP",
+    "concursoEspecial": false,
+    "dezenasOrdemSorteio": [
+      "21",
+      "06",
+      "04",
+      "08",
+      "18",
+      "30"
+    ],
+    "dezenas": [
+      "04",
+      "06",
+      "08",
+      "18",
+      "21",
+      "30"
+    ],
+    "trevos": [],
+    "timeCoracao": null,
+    "mesSorte": null,
+    "premiacoes": [
+      {
+        "descricao": "6 acertos",
+        "faixa": 1,
+        "ganhadores": 0,
+        "valorPremio": 0
+      },
+      {
+        "descricao": "5 acertos",
+        "faixa": 2,
+        "ganhadores": 136,
+        "valorPremio": 19052.37
+      },
+      {
+        "descricao": "4 acertos",
+        "faixa": 3,
+        "ganhadores": 6714,
+        "valorPremio": 636.14
+      }
+    ],
+    "estadosPremiados": [],
+    "observacao": "O sorteio da Mega-Sena 30 Anos será realizado no dia 24/05/2026 (domingo), às 11:00.",
+    "acumulou": true,
+    "proximoConcurso": 3010,
+    "dataProximoConcurso": "23/05/2026",
+    "localGanhadores": [],
+    "valorArrecadado": 65023704,
+    "valorAcumuladoConcurso_0_5": 188828074.99,
+    "valorAcumuladoConcursoEspecial": 188828074.99,
+    "valorAcumuladoProximoConcurso": 188828074.99,
+    "valorEstimadoProximoConcurso": 300000000
+  }
+]
