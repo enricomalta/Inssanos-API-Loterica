@@ -144,6 +144,44 @@ function buildApiCandidates(source) {
   return [source?.apiUrl, ...aliases].filter((value, index, list) => typeof value === "string" && value && list.indexOf(value) === index);
 }
 
+function extractCookieHeader(response) {
+  const directSetCookie = typeof response?.headers?.getSetCookie === "function" ? response.headers.getSetCookie() : [];
+  const fallbackSetCookie = response?.headers?.get?.("set-cookie");
+  const rawCookies = directSetCookie.length > 0
+    ? directSetCookie
+    : typeof fallbackSetCookie === "string" && fallbackSetCookie
+      ? fallbackSetCookie.split(/,(?=\s*[^;=\s]+=[^;]+)/)
+      : [];
+
+  return rawCookies
+    .map((cookie) => String(cookie).split(";")[0].trim())
+    .filter(Boolean)
+    .join("; ");
+}
+
+async function warmupLotterySession(source) {
+  const pageUrl = source?.pageUrl;
+  if (!pageUrl) {
+    return "";
+  }
+
+  const response = await fetch(pageUrl, {
+    headers: {
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+      "cache-control": "no-cache",
+      pragma: "no-cache",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+    }
+  });
+
+  if (!response.ok) {
+    return "";
+  }
+
+  return extractCookieHeader(response);
+}
+
 async function fetchLotteryResult(source) {
   const apiCandidates = buildApiCandidates(source);
   const maxAttempts = 3;
@@ -152,24 +190,48 @@ async function fetchLotteryResult(source) {
   for (const apiUrl of apiCandidates) {
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
+        const cookieHeader = await warmupLotterySession(source);
         const response = await fetch(apiUrl, {
           headers: {
             accept: "application/json, text/plain, */*",
             "accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
             origin: "https://loterias.caixa.gov.br",
             referer: source?.pageUrl || "https://loterias.caixa.gov.br/",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-site",
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
           }
         });
 
-        if (response.ok) {
-          return response.json();
-        }
-
-        const isRetriable = response.status === 403 || response.status === 429 || response.status >= 500;
-        if (!isRetriable || attempt === maxAttempts) {
+        if (!response.ok && !cookieHeader) {
           throw new Error(`Falha na consulta (${response.status}) em ${apiUrl}`);
         }
+
+        const responseWithCookie = !response.ok && cookieHeader
+          ? await fetch(apiUrl, {
+              headers: {
+                accept: "application/json, text/plain, */*",
+                "accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+                origin: "https://loterias.caixa.gov.br",
+                referer: source?.pageUrl || "https://loterias.caixa.gov.br/",
+                "sec-fetch-dest": "empty",
+                "sec-fetch-mode": "cors",
+                "sec-fetch-site": "same-site",
+                cookie: cookieHeader,
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+              }
+            })
+          : response;
+
+        if (responseWithCookie.ok) {
+          return responseWithCookie.json();
+        }
+
+        const isRetriable = responseWithCookie.status === 403 || responseWithCookie.status === 429 || responseWithCookie.status >= 500;
+        if (!isRetriable || attempt === maxAttempts) {
+          throw new Error(`Falha na consulta (${responseWithCookie.status}) em ${apiUrl}`);
+          }
 
         await new Promise((resolve) => setTimeout(resolve, attempt * 400));
       } catch (error) {
