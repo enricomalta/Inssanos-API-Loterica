@@ -138,17 +138,51 @@ function mapToResultsSchema(raw, loteria) {
 }
 
 async function fetchLotteryResult(apiUrl) {
-  const response = await fetch(apiUrl, {
-    headers: {
-      accept: "application/json"
-    }
-  });
+  const maxAttempts = 3;
+  let lastError = null;
 
-  if (!response.ok) {
-    throw new Error(`Falha na consulta (${response.status}) em ${apiUrl}`);
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await fetch(apiUrl, {
+        headers: {
+          accept: "application/json, text/plain, */*",
+          "accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+          origin: "https://loterias.caixa.gov.br",
+          referer: "https://loterias.caixa.gov.br/",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+        }
+      });
+
+      if (response.ok) {
+        return response.json();
+      }
+
+      const isRetriable = response.status === 403 || response.status === 429 || response.status >= 500;
+      if (!isRetriable || attempt === maxAttempts) {
+        throw new Error(`Falha na consulta (${response.status}) em ${apiUrl}`);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, attempt * 400));
+      continue;
+    } catch (error) {
+      lastError = error;
+
+      const message = String(error?.message ?? "");
+      const shouldRetry =
+        attempt < maxAttempts &&
+        !message.includes("Falha na consulta (400)") &&
+        !message.includes("Falha na consulta (401)") &&
+        !message.includes("Falha na consulta (404)");
+
+      if (!shouldRetry) {
+        break;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, attempt * 400));
+    }
   }
 
-  return response.json();
+  throw lastError ?? new Error(`Falha na consulta em ${apiUrl}`);
 }
 
 async function scrapeAndSaveLottery(key, source) {
