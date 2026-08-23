@@ -299,6 +299,20 @@ async function fetchLotteryResult(source) {
 
     const page = await context.newPage();
 
+    const ipPage = await context.newPage();
+
+    await ipPage.goto("https://ipinfo.io/json", {
+      waitUntil: "domcontentloaded",
+      timeout: 30000
+    });
+
+    const ipInfo = await ipPage.locator("body").innerText();
+
+    console.log("[BROWSERLESS] IP DE SAÍDA:");
+    console.log(ipInfo);
+
+    await ipPage.close();
+
     page.setDefaultTimeout(30000);
 
     console.log("[BROWSERLESS] Abrindo página da CAIXA...");
