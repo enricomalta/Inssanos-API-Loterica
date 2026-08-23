@@ -287,80 +287,81 @@ async function fetchLotteryResult(source) {
   let browser;
 
   try {
-    console.log(`[BROWSERLESS] Conectando ao Chrome remoto...`);
+    console.log("[BROWSERLESS] Conectando ao Chrome remoto...");
 
     browser = await chromium.connectOverCDP(browserlessUrl);
 
-    console.log(`[BROWSERLESS] Chrome conectado.`);
+    console.log("[BROWSERLESS] Chrome conectado.");
 
-    const context = browser.contexts()[0] || await browser.newContext();
+    const context =
+      browser.contexts()[0] ||
+      await browser.newContext();
 
     const page = await context.newPage();
 
     page.setDefaultTimeout(30000);
 
-    console.log(`[BROWSERLESS] Abrindo página da CAIXA...`);
+    console.log("[BROWSERLESS] Abrindo página da CAIXA...");
     console.log(`[BROWSERLESS] URL: ${source.pageUrl}`);
 
-    const response = await page.goto(source.pageUrl, {
+    const pageResponse = await page.goto(source.pageUrl, {
       waitUntil: "domcontentloaded",
       timeout: 30000
     });
 
     console.log(
-      `[BROWSERLESS] Página CAIXA HTTP ${response?.status() ?? "unknown"}`
+      `[BROWSERLESS] Página CAIXA HTTP ${pageResponse?.status() ?? "unknown"}`
     );
 
-    /*
-     * Fazemos a chamada à API dentro do próprio navegador.
-     *
-     * Isso é diferente de usar fetch() diretamente no Node/Vercel:
-     * a requisição sai do contexto do Chrome remoto.
-     */
-    const result = await page.evaluate(async (apiUrl) => {
-      const response = await fetch(apiUrl, {
-        method: "GET",
-        credentials: "include",
-        headers: {
-          Accept: "application/json, text/plain, */*"
-        }
-      });
+    // Pequena espera para permitir que a sessão/cookies da CAIXA
+    // sejam estabelecidos.
+    await page.waitForTimeout(1000);
 
-      const text = await response.text();
+    console.log("[BROWSERLESS] Navegando diretamente para API CAIXA...");
+    console.log(`[BROWSERLESS] API URL: ${source.apiUrl}`);
 
-      return {
-        status: response.status,
-        contentType: response.headers.get("content-type") || "",
-        body: text
-      };
-    }, source.apiUrl);
+    const apiResponse = await page.goto(source.apiUrl, {
+      waitUntil: "domcontentloaded",
+      timeout: 30000
+    });
 
-    console.log(`[BROWSERLESS] API CAIXA HTTP ${result.status}`);
-    console.log(`[BROWSERLESS] Content-Type: ${result.contentType}`);
+    if (!apiResponse) {
+      throw new Error("CAIXA não retornou resposta.");
+    }
 
-    if (result.status < 200 || result.status >= 300) {
+    const status = apiResponse.status();
+    const headers = apiResponse.headers();
+    const contentType = headers["content-type"] || "";
+    const body = await apiResponse.text();
+
+    console.log(`[BROWSERLESS] API CAIXA HTTP ${status}`);
+    console.log(`[BROWSERLESS] Content-Type: ${contentType}`);
+    console.log(`[BROWSERLESS] Resposta: ${body.slice(0, 500)}`);
+
+    if (status < 200 || status >= 300) {
       throw new Error(
-        `CAIXA retornou HTTP ${result.status}: ${result.body.slice(0, 500)}`
+        `CAIXA retornou HTTP ${status}: ${body.slice(0, 500)}`
       );
     }
 
     let parsed;
 
     try {
-      parsed = JSON.parse(result.body);
+      parsed = JSON.parse(body);
     } catch {
       throw new Error(
-        `CAIXA não retornou JSON válido: ${result.body.slice(0, 500)}`
+        `CAIXA não retornou JSON válido: ${body.slice(0, 500)}`
       );
     }
 
     return parsed;
+
   } finally {
     if (browser) {
       try {
         await browser.close();
       } catch {
-        // Ignora erro de encerramento da sessão remota.
+        // ignora erro de encerramento
       }
     }
   }
