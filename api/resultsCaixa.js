@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { chromium } from "playwright-core";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -273,79 +274,96 @@ async function warmupLotterySession(source) {
 }
 
 async function fetchLotteryResult(source) {
-  const baseCandidates = buildApiCandidates(source);
-  const preferredBaseUrl = await resolveCaixaApiBaseUrl();
-  const apiCandidates = expandApiCandidates(baseCandidates, preferredBaseUrl);
-  const maxAttempts = 3;
-  let lastError = null;
+  const token = process.env.BROWSERLESS_TOKEN;
 
-  for (const apiUrl of apiCandidates) {
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+  if (!token) {
+    throw new Error("BROWSERLESS_TOKEN não configurado.");
+  }
+
+  const browserlessUrl =
+    process.env.BROWSERLESS_WS_URL ||
+    `wss://production-sfo.browserless.io?token=${encodeURIComponent(token)}`;
+
+  let browser;
+
+  try {
+    console.log(`[BROWSERLESS] Conectando ao Chrome remoto...`);
+
+    browser = await chromium.connectOverCDP(browserlessUrl);
+
+    console.log(`[BROWSERLESS] Chrome conectado.`);
+
+    const context = browser.contexts()[0] || await browser.newContext();
+
+    const page = await context.newPage();
+
+    page.setDefaultTimeout(30000);
+
+    console.log(`[BROWSERLESS] Abrindo página da CAIXA...`);
+    console.log(`[BROWSERLESS] URL: ${source.pageUrl}`);
+
+    const response = await page.goto(source.pageUrl, {
+      waitUntil: "domcontentloaded",
+      timeout: 30000
+    });
+
+    console.log(
+      `[BROWSERLESS] Página CAIXA HTTP ${response?.status() ?? "unknown"}`
+    );
+
+    /*
+     * Fazemos a chamada à API dentro do próprio navegador.
+     *
+     * Isso é diferente de usar fetch() diretamente no Node/Vercel:
+     * a requisição sai do contexto do Chrome remoto.
+     */
+    const result = await page.evaluate(async (apiUrl) => {
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          Accept: "application/json, text/plain, */*"
+        }
+      });
+
+      const text = await response.text();
+
+      return {
+        status: response.status,
+        contentType: response.headers.get("content-type") || "",
+        body: text
+      };
+    }, source.apiUrl);
+
+    console.log(`[BROWSERLESS] API CAIXA HTTP ${result.status}`);
+    console.log(`[BROWSERLESS] Content-Type: ${result.contentType}`);
+
+    if (result.status < 200 || result.status >= 300) {
+      throw new Error(
+        `CAIXA retornou HTTP ${result.status}: ${result.body.slice(0, 500)}`
+      );
+    }
+
+    let parsed;
+
+    try {
+      parsed = JSON.parse(result.body);
+    } catch {
+      throw new Error(
+        `CAIXA não retornou JSON válido: ${result.body.slice(0, 500)}`
+      );
+    }
+
+    return parsed;
+  } finally {
+    if (browser) {
       try {
-        const cookieHeader = await warmupLotterySession(source);
-        const response = await fetch(apiUrl, {
-          headers: {
-            accept: "application/json, text/plain, */*",
-            "accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
-            origin: "https://loterias.caixa.gov.br",
-            referer: source?.pageUrl || "https://loterias.caixa.gov.br/",
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "same-site",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-          }
-        });
-
-        if (!response.ok && !cookieHeader) {
-          throw new Error(`Falha na consulta (${response.status}) em ${apiUrl}`);
-        }
-
-        const responseWithCookie = !response.ok && cookieHeader
-          ? await fetch(apiUrl, {
-              headers: {
-                accept: "application/json, text/plain, */*",
-                "accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
-                origin: "https://loterias.caixa.gov.br",
-                referer: source?.pageUrl || "https://loterias.caixa.gov.br/",
-                "sec-fetch-dest": "empty",
-                "sec-fetch-mode": "cors",
-                "sec-fetch-site": "same-site",
-                cookie: cookieHeader,
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-              }
-            })
-          : response;
-
-        if (responseWithCookie.ok) {
-          return responseWithCookie.json();
-        }
-
-        const isRetriable = responseWithCookie.status === 403 || responseWithCookie.status === 429 || responseWithCookie.status >= 500;
-        if (!isRetriable || attempt === maxAttempts) {
-          throw new Error(`Falha na consulta (${responseWithCookie.status}) em ${apiUrl}`);
-          }
-
-        await new Promise((resolve) => setTimeout(resolve, attempt * 400));
-      } catch (error) {
-        lastError = error;
-
-        const message = String(error?.message ?? "");
-        const shouldRetry =
-          attempt < maxAttempts &&
-          !message.includes("Falha na consulta (400)") &&
-          !message.includes("Falha na consulta (401)") &&
-          !message.includes("Falha na consulta (404)");
-
-        if (!shouldRetry) {
-          break;
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, attempt * 400));
+        await browser.close();
+      } catch {
+        // Ignora erro de encerramento da sessão remota.
       }
     }
   }
-
-  throw lastError ?? new Error(`Falha na consulta em ${apiCandidates[0] || "endpoint Caixa"}`);
 }
 
 async function scrapeAndSaveLottery(key, source) {
