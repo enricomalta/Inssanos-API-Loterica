@@ -297,21 +297,23 @@ async function fetchLotteryResult(source) {
       browser.contexts()[0] ||
       await browser.newContext();
 
-    const page = await context.newPage();
-
     const ipPage = await context.newPage();
 
-    await ipPage.goto("https://ipinfo.io/json", {
-      waitUntil: "domcontentloaded",
-      timeout: 30000
-    });
+    try {
+      await ipPage.goto("https://ipinfo.io/json", {
+        waitUntil: "domcontentloaded",
+        timeout: 30000
+      });
 
-    const ipInfo = await ipPage.locator("body").innerText();
+      const ipInfo = await ipPage.locator("body").innerText();
 
-    console.log("[BROWSERLESS] IP DE SAÍDA:");
-    console.log(ipInfo);
-
-    await ipPage.close();
+      console.log("[BROWSERLESS] IP DE SAÍDA:");
+      console.log(ipInfo);
+    } catch (error) {
+      console.error("[BROWSERLESS] Erro ao consultar IP:", error.message);
+    } finally {
+      await ipPage.close();
+    }
 
     page.setDefaultTimeout(30000);
 
