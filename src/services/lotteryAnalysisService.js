@@ -77,6 +77,7 @@ export function applyResponseCacheHeaders(response, cacheStatus) {
 
   response.setHeader("Cache-Control", "public, max-age=0, s-maxage=300, stale-while-revalidate=600");
   response.setHeader("X-Cache", cacheStatus);
+  response.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
 }
 
 export async function analyzeLottery(lotteryKey, query = {}) {

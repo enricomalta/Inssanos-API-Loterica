@@ -5,8 +5,8 @@
   "type": "module",
   "description": "Algoritmo de loterias Caixa em Node.js com dados locais e scrapping oficial + Machine Learning com deploy na Vercel",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
+  "start": "node --env-file=.env src/index.js",
+  "dev": "node --env-file=.env --watch src/index.js",
     "vercel": "vercel dev"
   },
   "engines": {
