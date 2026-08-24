@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { chromium } from "playwright-core";
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -9,29 +9,37 @@ const __dirname = path.dirname(__filename);
 const LOTTERY_SOURCES = {
   mega: {
     loteria: "megasena",
+
     pageUrl:
       "https://loterias.caixa.gov.br/Paginas/Mega-Sena.aspx",
+
     outputFile: "mega.json"
   },
 
   lotofacil: {
     loteria: "lotofacil",
+
     pageUrl:
       "https://loterias.caixa.gov.br/paginas/lotofacil.aspx",
+
     outputFile: "lotofacil.json"
   },
 
   quina: {
     loteria: "quina",
+
     pageUrl:
       "https://loterias.caixa.gov.br/Paginas/Quina.aspx",
+
     outputFile: "quina.json"
   },
 
   duplasena: {
     loteria: "duplasena",
+
     pageUrl:
       "https://loterias.caixa.gov.br/Paginas/Dupla-Sena.aspx",
+
     outputFile: "duplasena.json"
   }
 };
@@ -246,239 +254,178 @@ async function fetchLotteryResult(source) {
     );
   }
 
-  const browserlessUrl =
-    process.env.BROWSERLESS_WS_URL ||
-    `wss://production-sfo.browserless.io?token=${encodeURIComponent(token)}`;
+  const browserQLUrl =
+    "https://production-sfo.browserless.io/chromium/bql";
 
-  let browser;
-  let page;
+  const mutation = `
+    mutation CaixaRequests {
+      proxy(
+        type: [document, xhr]
+        country: BR
+        sticky: true
+      ) {
+        time
+      }
 
-  try {
-    console.log(
-      "[BROWSERLESS] Conectando ao Chrome remoto..."
-    );
+      goto(
+        url: "${source.pageUrl}"
+        waitUntil: networkIdle
+      ) {
+        status
+      }
 
-    browser = await chromium.connectOverCDP(
-      browserlessUrl
-    );
+      response(
+        url: "*"
+        type: xhr
+      ) {
+        url
+        body
+      }
+    }
+  `;
 
-    console.log(
-      "[BROWSERLESS] Chrome conectado."
-    );
+  console.log(
+    "[BROWSERQL] Abrindo página da CAIXA..."
+  );
 
-    const context = await browser.newContext({
-      viewport: {
-        width: 1920,
-        height: 1080
+  console.log(
+    `[BROWSERQL] URL: ${source.pageUrl}`
+  );
+
+  const response = await fetch(
+    `${browserQLUrl}?token=${encodeURIComponent(token)}`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
       },
 
-      userAgent:
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-
-      locale: "pt-BR",
-
-      extraHTTPHeaders: {
-        "Accept-Language":
-          "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-
-        Referer:
-          "https://loterias.caixa.gov.br/"
-      }
-    });
-
-    page = await context.newPage();
-
-    page.setDefaultTimeout(30000);
-
-    let apiResult = null;
-
-    let resolveApiResponse;
-    let rejectApiResponse;
-
-    const apiResponsePromise =
-      new Promise((resolve, reject) => {
-        resolveApiResponse = resolve;
-        rejectApiResponse = reject;
-      });
-
-    const responseHandler = async (response) => {
-      try {
-        const url = response.url();
-
-        if (
-          !url.includes(
-            "/portaldeloterias/api/"
-          )
-        ) {
-          return;
-        }
-
-        if (
-          response.request().method() !==
-          "GET"
-        ) {
-          return;
-        }
-
-        console.log(
-          `[BROWSERLESS] Requisição da API detectada: ${url}`
-        );
-
-        const status =
-          response.status();
-
-        const contentType =
-          response.headers()[
-            "content-type"
-          ] || "";
-
-        const body =
-          await response.text();
-
-        console.log(
-          `[BROWSERLESS] API HTTP: ${status}`
-        );
-
-        console.log(
-          `[BROWSERLESS] API Content-Type: ${contentType}`
-        );
-
-        console.log(
-          `[BROWSERLESS] API Resposta: ${body.slice(
-            0,
-            500
-          )}`
-        );
-
-        if (
-          status >= 200 &&
-          status < 300
-        ) {
-          apiResult = {
-            url,
-            status,
-            contentType,
-            body
-          };
-
-          resolveApiResponse(
-            apiResult
-          );
-        } else {
-          rejectApiResponse(
-            new Error(
-              `CAIXA retornou HTTP ${status}: ${body.slice(
-                0,
-                500
-              )}`
-            )
-          );
-        }
-
-      } catch (error) {
-        rejectApiResponse(error);
-      }
-    };
-
-    page.on(
-      "response",
-      responseHandler
-    );
-
-    console.log(
-      "[BROWSERLESS] Abrindo página da CAIXA..."
-    );
-
-    console.log(
-      `[BROWSERLESS] URL: ${source.pageUrl}`
-    );
-
-    const pageResponse =
-      await page.goto(
-        source.pageUrl,
-        {
-          waitUntil:
-            "domcontentloaded",
-
-          timeout: 60000
-        }
-      );
-
-    console.log(
-      `[BROWSERLESS] Página CAIXA HTTP ${
-        pageResponse?.status() ??
-        "unknown"
-      }`
-    );
-
-    console.log(
-      "[BROWSERLESS] Página carregada. Aguardando API..."
-    );
-
-    const timeoutPromise =
-      new Promise(
-        (_, reject) => {
-          setTimeout(() => {
-            reject(
-              new Error(
-                "Tempo limite aguardando a requisição da API da CAIXA."
-              )
-            );
-          }, 60000);
-        }
-      );
-
-    const result =
-      await Promise.race([
-        apiResponsePromise,
-        timeoutPromise
-      ]);
-
-    if (!result?.body) {
-      throw new Error(
-        "A CAIXA não retornou o conteúdo da API."
-      );
+      body: JSON.stringify({
+        query: mutation
+      })
     }
+  );
 
-    let parsed;
+  const text =
+    await response.text();
 
-    try {
-      parsed =
-        JSON.parse(result.body);
-    } catch {
-      throw new Error(
-        `CAIXA não retornou JSON válido: ${result.body.slice(
-          0,
-          500
-        )}`
-      );
-    }
+  if (!response.ok) {
+    throw new Error(
+      `BrowserQL retornou HTTP ${response.status}: ${text.slice(
+        0,
+        1000
+      )}`
+    );
+  }
 
-    return parsed;
+  let result;
 
-  } catch (error) {
-    console.error(
-      "[BROWSERLESS] Erro:",
-      error?.message
+  try {
+    result = JSON.parse(text);
+  } catch {
+    throw new Error(
+      `BrowserQL não retornou JSON válido: ${text.slice(
+        0,
+        1000
+      )}`
+    );
+  }
+
+  if (result.errors?.length) {
+    throw new Error(
+      `BrowserQL: ${result.errors
+        .map(
+          (error) =>
+            error?.message ||
+            "Erro desconhecido"
+        )
+        .join("; ")}`
+    );
+  }
+
+  const data =
+    result?.data;
+
+  if (!data) {
+    throw new Error(
+      "BrowserQL não retornou data."
+    );
+  }
+
+  console.log(
+    "[BROWSERQL] Navegação concluída."
+  );
+
+  console.log(
+    "[BROWSERQL] Status da página:",
+    data.goto?.status
+  );
+
+  const responses =
+    Array.isArray(data.response)
+      ? data.response
+      : [];
+
+  console.log(
+    `[BROWSERQL] XHRs capturados: ${responses.length}`
+  );
+
+  for (const item of responses) {
+    console.log(
+      `[BROWSERQL] XHR: ${item.url}`
+    );
+  }
+
+  /*
+   * Procuramos a resposta da API
+   * da própria CAIXA.
+   */
+
+  const apiResponse =
+    responses.find(
+      (item) =>
+        typeof item?.url === "string" &&
+        item.url.includes(
+          "/portaldeloterias/api/"
+        ) &&
+        typeof item?.body === "string" &&
+        item.body.trim().startsWith("{")
     );
 
-    throw error;
+  if (!apiResponse) {
+    throw new Error(
+      "A página da CAIXA foi carregada, mas nenhuma resposta JSON da API de loteria foi encontrada."
+    );
+  }
 
-  } finally {
-    if (page) {
-      try {
-        await page.close();
-      } catch {}
-    }
+  console.log(
+    "[BROWSERQL] API encontrada:"
+  );
 
-    if (browser) {
-      try {
-        await browser.close();
-      } catch {}
-    }
+  console.log(
+    apiResponse.url
+  );
+
+  console.log(
+    "[BROWSERQL] Resposta:",
+    apiResponse.body.slice(
+      0,
+      500
+    )
+  );
+
+  try {
+    return JSON.parse(
+      apiResponse.body
+    );
+  } catch {
+    throw new Error(
+      `A resposta da CAIXA não é JSON válido: ${apiResponse.body.slice(
+        0,
+        500
+      )}`
+    );
   }
 }
 
