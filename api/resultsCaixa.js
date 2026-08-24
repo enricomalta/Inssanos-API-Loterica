@@ -266,9 +266,28 @@ async function fetchLotteryResult(source) {
       "[BROWSERLESS] Chrome conectado."
     );
 
-    const context =
-      browser.contexts()[0] ||
-      await browser.newContext();
+    const context = await browser.newContext({
+      viewport: {
+        width: 1920,
+        height: 1080
+      },
+
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+
+      locale: "pt-BR",
+
+      extraHTTPHeaders: {
+        "Accept-Language":
+          "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+
+        Referer:
+          "https://loterias.caixa.gov.br/"
+      }
+    });
 
     page = await context.newPage();
 
