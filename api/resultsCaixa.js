@@ -316,6 +316,9 @@ async function fetchLotteryResult(source) {
     }
 
     page.setDefaultTimeout(30000);
+    const page = await context.newPage();
+
+    page.setDefaultTimeout(30000);
 
     console.log("[BROWSERLESS] Abrindo página da CAIXA...");
     console.log(`[BROWSERLESS] URL: ${source.pageUrl}`);
@@ -373,12 +376,16 @@ async function fetchLotteryResult(source) {
     return parsed;
 
   } finally {
+    if (page) {
+      try {
+        await page.close();
+      } catch {}
+    }
+
     if (browser) {
       try {
         await browser.close();
-      } catch {
-        // ignora erro de encerramento
-      }
+      } catch {}
     }
   }
 }
