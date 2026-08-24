@@ -1,9 +1,8 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import {
+  readR2JsonArray,
+  writeR2Json,
+  getR2PublicUrl
+} from "../src/services/r2StorageService.js";
 
 const BROWSERQL_URL =
   "https://production-sfo.browserless.io/chromium/bql";
@@ -515,41 +514,18 @@ async function fetchLotteryResult(source) {
   }
 }
 
-async function readJsonArray(
-  filePath
-) {
-  try {
-    const raw =
-      await fs.readFile(
-        filePath,
-        "utf-8"
-      );
-
-    const parsed =
-      JSON.parse(raw);
-
-    return Array.isArray(parsed)
-      ? parsed
-      : [];
-  } catch (error) {
-    if (
-      error?.code ===
-      "ENOENT"
-    ) {
-      return [];
-    }
-
-    throw error;
-  }
-}
-
+/**
+ * Lê o arquivo oficial da loteria no R2,
+ * atualiza ou insere o concurso e salva
+ * novamente no R2.
+ */
 async function upsertContestInOfficialResults(
-  filePath,
+  objectKey,
   contest
 ) {
   const contests =
-    await readJsonArray(
-      filePath
+    await readR2JsonArray(
+      objectKey
     );
 
   const contestNumber =
@@ -557,6 +533,12 @@ async function upsertContestInOfficialResults(
       contest?.concurso,
       -1
     );
+
+  if (contestNumber < 0) {
+    throw new Error(
+      `Concurso inválido para ${objectKey}.`
+    );
+  }
 
   const existingIndex =
     contests.findIndex(
@@ -567,56 +549,53 @@ async function upsertContestInOfficialResults(
         ) === contestNumber
     );
 
-  if (
-    existingIndex >= 0
-  ) {
-    contests[
-      existingIndex
-    ] = contest;
-
-    await fs.writeFile(
-      filePath,
-      JSON.stringify(
-        contests,
-        null,
-        2
-      ),
-      "utf-8"
+  if (existingIndex >= 0) {
+    contests[existingIndex] =
+      contest;
+  } else {
+    contests.push(
+      contest
     );
-
-    return {
-      action: "updated",
-      index: existingIndex
-    };
   }
-
-  contests.unshift(
-    contest
-  );
 
   contests.sort(
     (a, b) =>
       toNumber(
-        b?.concurso
+        b?.concurso,
+        -1
       ) -
       toNumber(
-        a?.concurso
+        a?.concurso,
+        -1
       )
   );
 
-  await fs.writeFile(
-    filePath,
-    JSON.stringify(
-      contests,
-      null,
-      2
-    ),
-    "utf-8"
+  await writeR2Json(
+    objectKey,
+    contests
   );
 
   return {
-    action: "inserted",
-    index: 0
+    action:
+      existingIndex >= 0
+        ? "updated"
+        : "inserted",
+
+    index:
+      contests.findIndex(
+        (item) =>
+          toNumber(
+            item?.concurso,
+            -1
+          ) === contestNumber
+      ),
+
+    objectKey,
+
+    publicUrl:
+      getR2PublicUrl(
+        objectKey
+      )
   };
 }
 
@@ -635,45 +614,9 @@ async function scrapeAndSaveLottery(
       source.loteria
     );
 
-  const previewOutputDir =
-    path.resolve(
-      __dirname,
-      "../results/scraped"
-    );
-
-  const previewOutputPath =
-    path.join(
-      previewOutputDir,
-      source.outputFile
-    );
-
-  const officialOutputPath =
-    path.resolve(
-      __dirname,
-      "../results",
-      source.outputFile
-    );
-
-  await fs.mkdir(
-    previewOutputDir,
-    {
-      recursive: true
-    }
-  );
-
-  await fs.writeFile(
-    previewOutputPath,
-    JSON.stringify(
-      [mapped],
-      null,
-      2
-    ),
-    "utf-8"
-  );
-
   const officialUpdate =
     await upsertContestInOfficialResults(
-      officialOutputPath,
+      source.outputFile,
       mapped
     );
 
@@ -689,9 +632,13 @@ async function scrapeAndSaveLottery(
     data:
       mapped.data,
 
-    previewOutputPath,
+    officialObjectKey:
+      source.outputFile,
 
-    officialOutputPath,
+    officialPublicUrl:
+      getR2PublicUrl(
+        source.outputFile
+      ),
 
     officialUpdate
   };
@@ -810,8 +757,10 @@ export async function scrapeUltimoResultadoCaixa(
 }
 
 if (
-  process.argv[1] ===
-  __filename
+  process.argv[1] &&
+  process.argv[1].endsWith(
+    "resultsCaixa.js"
+  )
 ) {
   scrapeResultadosCaixa()
     .then((result) => {

@@ -1,19 +1,26 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
-import { getLotteryConfig } from "../config/constants.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import {
+  readR2Object
+} from "../services/r2StorageService.js";
+
+import {
+  getLotteryConfig
+} from "../config/constants.js";
 
 export async function loadMegaResults() {
-  const { contests } = await loadLotteryResultsWithHash("mega");
+  const { contests } =
+    await loadLotteryResultsWithHash("mega");
+
   return contests;
 }
 
 export async function loadMegaResultsWithHash() {
-  const { contests, dataHash } = await loadLotteryResultsWithHash("mega");
+  const {
+    contests,
+    dataHash
+  } =
+    await loadLotteryResultsWithHash("mega");
 
   return {
     contests,
@@ -21,17 +28,44 @@ export async function loadMegaResultsWithHash() {
   };
 }
 
-export async function loadLotteryResultsWithHash(lotteryKey) {
-  const config = getLotteryConfig(lotteryKey);
-  const filePath = path.resolve(__dirname, config.jsonRelativePath);
-  const raw = await fs.readFile(filePath, "utf-8");
-  const parsed = JSON.parse(raw);
+export async function loadLotteryResultsWithHash(
+  lotteryKey
+) {
+  const config =
+    getLotteryConfig(lotteryKey);
 
-  if (!Array.isArray(parsed)) {
-    throw new Error(`Formato invalido: ${lotteryKey}.json precisa ser um array de concursos.`);
+  const key =
+    config.jsonFile;
+
+  const raw =
+    await readR2Object(key);
+
+  if (raw === null) {
+    throw new Error(
+      `Arquivo de resultados não encontrado no R2: ${key}`
+    );
   }
 
-  const hash = createHash("sha256").update(raw).digest("hex");
+  let parsed;
+
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(
+      `JSON inválido no R2: ${key}`
+    );
+  }
+
+  if (!Array.isArray(parsed)) {
+    throw new Error(
+      `Formato invalido: ${lotteryKey}.json precisa ser um array de concursos.`
+    );
+  }
+
+  const hash =
+    createHash("sha256")
+      .update(raw)
+      .digest("hex");
 
   return {
     contests: parsed,
