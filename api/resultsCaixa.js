@@ -238,8 +238,7 @@ function mapToResultsSchema(
 }
 
 async function fetchLotteryResult(source) {
-  const token =
-    process.env.BROWSERLESS_TOKEN;
+  const token = process.env.BROWSERLESS_TOKEN;
 
   if (!token) {
     throw new Error(
@@ -249,9 +248,7 @@ async function fetchLotteryResult(source) {
 
   const browserlessUrl =
     process.env.BROWSERLESS_WS_URL ||
-    `wss://production-sfo.browserless.io?token=${encodeURIComponent(
-      token
-    )}`;
+    `wss://production-sfo.browserless.io?token=${encodeURIComponent(token)}`;
 
   let browser;
   let page;
@@ -261,10 +258,9 @@ async function fetchLotteryResult(source) {
       "[BROWSERLESS] Conectando ao Chrome remoto..."
     );
 
-    browser =
-      await chromium.connectOverCDP(
-        browserlessUrl
-      );
+    browser = await chromium.connectOverCDP(
+      browserlessUrl
+    );
 
     console.log(
       "[BROWSERLESS] Chrome conectado."
@@ -274,44 +270,104 @@ async function fetchLotteryResult(source) {
       browser.contexts()[0] ||
       await browser.newContext();
 
-    page =
-      await context.newPage();
+    page = await context.newPage();
 
-    page.setDefaultTimeout(
-      30000
-    );
+    page.setDefaultTimeout(30000);
 
-    /*
-     * A CAIXA determina a URL real da API
-     * através do params.txt e do próprio
-     * JavaScript da página.
-     *
-     * Portanto não fazemos mais:
-     *
-     * page.goto(servicebus...)
-     *
-     * Apenas observamos a requisição
-     * que a própria página realiza.
-     */
+    let apiResult = null;
+
+    let resolveApiResponse;
+    let rejectApiResponse;
 
     const apiResponsePromise =
-      page.waitForResponse(
-        (response) => {
-          const url =
-            response.url();
+      new Promise((resolve, reject) => {
+        resolveApiResponse = resolve;
+        rejectApiResponse = reject;
+      });
 
-          return (
-            url.includes(
-              "/portaldeloterias/api/"
-            ) &&
-            response.request().method() ===
-              "GET"
-          );
-        },
-        {
-          timeout: 60000
+    const responseHandler = async (response) => {
+      try {
+        const url = response.url();
+
+        if (
+          !url.includes(
+            "/portaldeloterias/api/"
+          )
+        ) {
+          return;
         }
-      );
+
+        if (
+          response.request().method() !==
+          "GET"
+        ) {
+          return;
+        }
+
+        console.log(
+          `[BROWSERLESS] Requisição da API detectada: ${url}`
+        );
+
+        const status =
+          response.status();
+
+        const contentType =
+          response.headers()[
+            "content-type"
+          ] || "";
+
+        const body =
+          await response.text();
+
+        console.log(
+          `[BROWSERLESS] API HTTP: ${status}`
+        );
+
+        console.log(
+          `[BROWSERLESS] API Content-Type: ${contentType}`
+        );
+
+        console.log(
+          `[BROWSERLESS] API Resposta: ${body.slice(
+            0,
+            500
+          )}`
+        );
+
+        if (
+          status >= 200 &&
+          status < 300
+        ) {
+          apiResult = {
+            url,
+            status,
+            contentType,
+            body
+          };
+
+          resolveApiResponse(
+            apiResult
+          );
+        } else {
+          rejectApiResponse(
+            new Error(
+              `CAIXA retornou HTTP ${status}: ${body.slice(
+                0,
+                500
+              )}`
+            )
+          );
+        }
+
+      } catch (error) {
+        rejectApiResponse(error);
+      }
+    };
+
+    page.on(
+      "response",
+      responseHandler
+    );
 
     console.log(
       "[BROWSERLESS] Abrindo página da CAIXA..."
@@ -339,60 +395,32 @@ async function fetchLotteryResult(source) {
       }`
     );
 
-    /*
-     * Agora esperamos a própria página
-     * realizar a chamada da API.
-     */
-
     console.log(
-      "[BROWSERLESS] Aguardando requisição da API da CAIXA..."
+      "[BROWSERLESS] Página carregada. Aguardando API..."
     );
 
-    const apiResponse =
-      await apiResponsePromise;
+    const timeoutPromise =
+      new Promise(
+        (_, reject) => {
+          setTimeout(() => {
+            reject(
+              new Error(
+                "Tempo limite aguardando a requisição da API da CAIXA."
+              )
+            );
+          }, 60000);
+        }
+      );
 
-    const apiUrl =
-      apiResponse.url();
+    const result =
+      await Promise.race([
+        apiResponsePromise,
+        timeoutPromise
+      ]);
 
-    const status =
-      apiResponse.status();
-
-    const contentType =
-      apiResponse.headers()[
-        "content-type"
-      ] || "";
-
-    console.log(
-      `[BROWSERLESS] API detectada: ${apiUrl}`
-    );
-
-    console.log(
-      `[BROWSERLESS] HTTP: ${status}`
-    );
-
-    console.log(
-      `[BROWSERLESS] Content-Type: ${contentType}`
-    );
-
-    const body =
-      await apiResponse.text();
-
-    console.log(
-      `[BROWSERLESS] Resposta: ${body.slice(
-        0,
-        500
-      )}`
-    );
-
-    if (
-      status < 200 ||
-      status >= 300
-    ) {
+    if (!result?.body) {
       throw new Error(
-        `CAIXA retornou HTTP ${status}: ${body.slice(
-          0,
-          500
-        )}`
+        "A CAIXA não retornou o conteúdo da API."
       );
     }
 
@@ -400,10 +428,10 @@ async function fetchLotteryResult(source) {
 
     try {
       parsed =
-        JSON.parse(body);
+        JSON.parse(result.body);
     } catch {
       throw new Error(
-        `CAIXA não retornou JSON válido: ${body.slice(
+        `CAIXA não retornou JSON válido: ${result.body.slice(
           0,
           500
         )}`
@@ -414,7 +442,7 @@ async function fetchLotteryResult(source) {
 
   } catch (error) {
     console.error(
-      "[BROWSERLESS] Erro ao buscar resultado:",
+      "[BROWSERLESS] Erro:",
       error?.message
     );
 
