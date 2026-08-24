@@ -9,29 +9,29 @@ const __dirname = path.dirname(__filename);
 const LOTTERY_SOURCES = {
   mega: {
     loteria: "megasena",
-    pageUrl: "https://loterias.caixa.gov.br/Paginas/Mega-Sena.aspx",
-    apiUrl: "https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena",
+    pageUrl:
+      "https://loterias.caixa.gov.br/Paginas/Mega-Sena.aspx",
     outputFile: "mega.json"
   },
 
   lotofacil: {
     loteria: "lotofacil",
-    pageUrl: "https://loterias.caixa.gov.br/paginas/lotofacil.aspx",
-    apiUrl: "https://servicebus2.caixa.gov.br/portaldeloterias/api/lotofacil",
+    pageUrl:
+      "https://loterias.caixa.gov.br/paginas/lotofacil.aspx",
     outputFile: "lotofacil.json"
   },
 
   quina: {
     loteria: "quina",
-    pageUrl: "https://loterias.caixa.gov.br/Paginas/Quina.aspx",
-    apiUrl: "https://servicebus2.caixa.gov.br/portaldeloterias/api/quina",
+    pageUrl:
+      "https://loterias.caixa.gov.br/Paginas/Quina.aspx",
     outputFile: "quina.json"
   },
 
   duplasena: {
     loteria: "duplasena",
-    pageUrl: "https://loterias.caixa.gov.br/Paginas/Dupla-Sena.aspx",
-    apiUrl: "https://servicebus2.caixa.gov.br/portaldeloterias/api/duplasena",
+    pageUrl:
+      "https://loterias.caixa.gov.br/Paginas/Dupla-Sena.aspx",
     outputFile: "duplasena.json"
   }
 };
@@ -57,8 +57,13 @@ function sanitizeText(value) {
 }
 
 function buildLocal(raw) {
-  const localSorteio = sanitizeText(raw?.localSorteio);
-  const municipioUf = sanitizeText(raw?.nomeMunicipioUFSorteio);
+  const localSorteio = sanitizeText(
+    raw?.localSorteio
+  );
+
+  const municipioUf = sanitizeText(
+    raw?.nomeMunicipioUFSorteio
+  );
 
   if (localSorteio && municipioUf) {
     return `${localSorteio} em ${municipioUf}`;
@@ -73,10 +78,21 @@ function mapPremiacoes(rateios) {
   }
 
   return rateios.map((item) => ({
-    descricao: sanitizeText(item?.descricaoFaixa),
-    faixa: toNumber(item?.faixa),
-    ganhadores: toNumber(item?.numeroDeGanhadores),
-    valorPremio: toNumber(item?.valorPremio)
+    descricao: sanitizeText(
+      item?.descricaoFaixa
+    ),
+
+    faixa: toNumber(
+      item?.faixa
+    ),
+
+    ganhadores: toNumber(
+      item?.numeroDeGanhadores
+    ),
+
+    valorPremio: toNumber(
+      item?.valorPremio
+    )
   }));
 }
 
@@ -88,24 +104,33 @@ function normalizeDezenas(values) {
   return values
     .map((value) => String(value).trim())
     .filter(Boolean)
-    .sort((a, b) => toNumber(a) - toNumber(b))
-    .map((value) => value.padStart(2, "0"));
+    .sort(
+      (a, b) =>
+        toNumber(a) - toNumber(b)
+    )
+    .map((value) =>
+      value.padStart(2, "0")
+    );
 }
 
 function mapDezenas(raw, loteria) {
   if (loteria !== "duplasena") {
-    return Array.isArray(raw?.listaDezenas)
+    return Array.isArray(
+      raw?.listaDezenas
+    )
       ? raw.listaDezenas
       : [];
   }
 
-  const primeiroSorteio = normalizeDezenas(
-    raw?.listaDezenas
-  );
+  const primeiroSorteio =
+    normalizeDezenas(
+      raw?.listaDezenas
+    );
 
-  const segundoSorteio = normalizeDezenas(
-    raw?.listaDezenasSegundoSorteio
-  );
+  const segundoSorteio =
+    normalizeDezenas(
+      raw?.listaDezenasSegundoSorteio
+    );
 
   return [
     ...primeiroSorteio,
@@ -113,25 +138,39 @@ function mapDezenas(raw, loteria) {
   ];
 }
 
-function mapToResultsSchema(raw, loteria) {
+function mapToResultsSchema(
+  raw,
+  loteria
+) {
   return {
     loteria,
 
-    concurso: toNumber(raw?.numero),
+    concurso: toNumber(
+      raw?.numero
+    ),
 
-    data: sanitizeText(raw?.dataApuracao),
+    data: sanitizeText(
+      raw?.dataApuracao
+    ),
 
     local: buildLocal(raw),
 
     concursoEspecial:
-      toNumber(raw?.indicadorConcursoEspecial) > 1,
+      toNumber(
+        raw?.indicadorConcursoEspecial
+      ) > 1,
 
     dezenasOrdemSorteio:
-      Array.isArray(raw?.dezenasSorteadasOrdemSorteio)
+      Array.isArray(
+        raw?.dezenasSorteadasOrdemSorteio
+      )
         ? raw.dezenasSorteadasOrdemSorteio
         : [],
 
-    dezenas: mapDezenas(raw, loteria),
+    dezenas: mapDezenas(
+      raw,
+      loteria
+    ),
 
     trevos: [],
 
@@ -139,46 +178,68 @@ function mapToResultsSchema(raw, loteria) {
 
     mesSorte: null,
 
-    premiacoes: mapPremiacoes(
-      raw?.listaRateioPremio
-    ),
+    premiacoes:
+      mapPremiacoes(
+        raw?.listaRateioPremio
+      ),
 
     estadosPremiados: [],
 
-    observacao: sanitizeText(raw?.observacao),
+    observacao: sanitizeText(
+      raw?.observacao
+    ),
 
-    acumulou: Boolean(raw?.acumulado),
+    acumulou: Boolean(
+      raw?.acumulado
+    ),
 
     proximoConcurso:
-      toNumber(raw?.numeroConcursoProximo),
+      toNumber(
+        raw?.numeroConcursoProximo
+      ),
 
     dataProximoConcurso:
-      sanitizeText(raw?.dataProximoConcurso),
+      sanitizeText(
+        raw?.dataProximoConcurso
+      ),
 
     localGanhadores:
-      Array.isArray(raw?.listaMunicipioUFGanhadores)
+      Array.isArray(
+        raw?.listaMunicipioUFGanhadores
+      )
         ? raw.listaMunicipioUFGanhadores
         : [],
 
     valorArrecadado:
-      toNumber(raw?.valorArrecadado),
+      toNumber(
+        raw?.valorArrecadado
+      ),
 
     valorAcumuladoConcurso_0_5:
-      toNumber(raw?.valorAcumuladoConcurso_0_5),
+      toNumber(
+        raw?.valorAcumuladoConcurso_0_5
+      ),
 
     valorAcumuladoConcursoEspecial:
-      toNumber(raw?.valorAcumuladoConcursoEspecial),
+      toNumber(
+        raw?.valorAcumuladoConcursoEspecial
+      ),
 
     valorAcumuladoProximoConcurso:
-      toNumber(raw?.valorAcumuladoProximoConcurso),
+      toNumber(
+        raw?.valorAcumuladoProximoConcurso
+      ),
 
     valorEstimadoProximoConcurso:
-      toNumber(raw?.valorEstimadoProximoConcurso)
+      toNumber(
+        raw?.valorEstimadoProximoConcurso
+      )
   };
 }
 
 async function fetchLotteryResult(source) {
-  const token = process.env.BROWSERLESS_TOKEN;
+  const token =
+    process.env.BROWSERLESS_TOKEN;
 
   if (!token) {
     throw new Error(
@@ -188,7 +249,9 @@ async function fetchLotteryResult(source) {
 
   const browserlessUrl =
     process.env.BROWSERLESS_WS_URL ||
-    `wss://production-sfo.browserless.io?token=${encodeURIComponent(token)}`;
+    `wss://production-sfo.browserless.io?token=${encodeURIComponent(
+      token
+    )}`;
 
   let browser;
   let page;
@@ -198,9 +261,10 @@ async function fetchLotteryResult(source) {
       "[BROWSERLESS] Conectando ao Chrome remoto..."
     );
 
-    browser = await chromium.connectOverCDP(
-      browserlessUrl
-    );
+    browser =
+      await chromium.connectOverCDP(
+        browserlessUrl
+      );
 
     console.log(
       "[BROWSERLESS] Chrome conectado."
@@ -210,9 +274,44 @@ async function fetchLotteryResult(source) {
       browser.contexts()[0] ||
       await browser.newContext();
 
-    page = await context.newPage();
+    page =
+      await context.newPage();
 
-    page.setDefaultTimeout(30000);
+    page.setDefaultTimeout(
+      30000
+    );
+
+    /*
+     * A CAIXA determina a URL real da API
+     * através do params.txt e do próprio
+     * JavaScript da página.
+     *
+     * Portanto não fazemos mais:
+     *
+     * page.goto(servicebus...)
+     *
+     * Apenas observamos a requisição
+     * que a própria página realiza.
+     */
+
+    const apiResponsePromise =
+      page.waitForResponse(
+        (response) => {
+          const url =
+            response.url();
+
+          return (
+            url.includes(
+              "/portaldeloterias/api/"
+            ) &&
+            response.request().method() ===
+              "GET"
+          );
+        },
+        {
+          timeout: 60000
+        }
+      );
 
     console.log(
       "[BROWSERLESS] Abrindo página da CAIXA..."
@@ -222,78 +321,104 @@ async function fetchLotteryResult(source) {
       `[BROWSERLESS] URL: ${source.pageUrl}`
     );
 
-    const pageResponse = await page.goto(
-      source.pageUrl,
-      {
-        waitUntil: "domcontentloaded",
-        timeout: 30000
-      }
-    );
+    const pageResponse =
+      await page.goto(
+        source.pageUrl,
+        {
+          waitUntil:
+            "domcontentloaded",
+
+          timeout: 60000
+        }
+      );
 
     console.log(
       `[BROWSERLESS] Página CAIXA HTTP ${
-        pageResponse?.status() ?? "unknown"
+        pageResponse?.status() ??
+        "unknown"
       }`
     );
 
-    await page.waitForTimeout(1000);
+    /*
+     * Agora esperamos a própria página
+     * realizar a chamada da API.
+     */
 
     console.log(
-      "[BROWSERLESS] Navegando para API da CAIXA..."
+      "[BROWSERLESS] Aguardando requisição da API da CAIXA..."
     );
 
-    console.log(
-      `[BROWSERLESS] API URL: ${source.apiUrl}`
-    );
+    const apiResponse =
+      await apiResponsePromise;
 
-    const apiResponse = await page.goto(
-      source.apiUrl,
-      {
-        waitUntil: "domcontentloaded",
-        timeout: 30000
-      }
-    );
+    const apiUrl =
+      apiResponse.url();
 
-    if (!apiResponse) {
-      throw new Error(
-        "CAIXA não retornou resposta."
-      );
-    }
-
-    const status = apiResponse.status();
-
-    const headers = apiResponse.headers();
+    const status =
+      apiResponse.status();
 
     const contentType =
-      headers["content-type"] || "";
-
-    const body = await apiResponse.text();
+      apiResponse.headers()[
+        "content-type"
+      ] || "";
 
     console.log(
-      `[BROWSERLESS] API CAIXA HTTP ${status}`
+      `[BROWSERLESS] API detectada: ${apiUrl}`
+    );
+
+    console.log(
+      `[BROWSERLESS] HTTP: ${status}`
     );
 
     console.log(
       `[BROWSERLESS] Content-Type: ${contentType}`
     );
 
+    const body =
+      await apiResponse.text();
+
     console.log(
-      `[BROWSERLESS] Resposta: ${body.slice(0, 500)}`
+      `[BROWSERLESS] Resposta: ${body.slice(
+        0,
+        500
+      )}`
     );
 
-    if (status < 200 || status >= 300) {
+    if (
+      status < 200 ||
+      status >= 300
+    ) {
       throw new Error(
-        `CAIXA retornou HTTP ${status}: ${body.slice(0, 500)}`
+        `CAIXA retornou HTTP ${status}: ${body.slice(
+          0,
+          500
+        )}`
       );
     }
 
+    let parsed;
+
     try {
-      return JSON.parse(body);
+      parsed =
+        JSON.parse(body);
     } catch {
       throw new Error(
-        `CAIXA não retornou JSON válido: ${body.slice(0, 500)}`
+        `CAIXA não retornou JSON válido: ${body.slice(
+          0,
+          500
+        )}`
       );
     }
+
+    return parsed;
+
+  } catch (error) {
+    console.error(
+      "[BROWSERLESS] Erro ao buscar resultado:",
+      error?.message
+    );
+
+    throw error;
 
   } finally {
     if (page) {
@@ -310,21 +435,28 @@ async function fetchLotteryResult(source) {
   }
 }
 
-async function readJsonArray(filePath) {
+async function readJsonArray(
+  filePath
+) {
   try {
-    const raw = await fs.readFile(
-      filePath,
-      "utf-8"
-    );
+    const raw =
+      await fs.readFile(
+        filePath,
+        "utf-8"
+      );
 
-    const parsed = JSON.parse(raw);
+    const parsed =
+      JSON.parse(raw);
 
     return Array.isArray(parsed)
       ? parsed
       : [];
 
   } catch (error) {
-    if (error?.code === "ENOENT") {
+    if (
+      error?.code ===
+      "ENOENT"
+    ) {
       return [];
     }
 
@@ -337,21 +469,37 @@ async function upsertContestInOfficialResults(
   contest
 ) {
   const contests =
-    await readJsonArray(filePath);
+    await readJsonArray(
+      filePath
+    );
 
   const existingIndex =
     contests.findIndex(
       (item) =>
-        toNumber(item?.concurso, -1) ===
-        toNumber(contest?.concurso, -1)
+        toNumber(
+          item?.concurso,
+          -1
+        ) ===
+        toNumber(
+          contest?.concurso,
+          -1
+        )
     );
 
-  if (existingIndex >= 0) {
-    contests[existingIndex] = contest;
+  if (
+    existingIndex >= 0
+  ) {
+    contests[
+      existingIndex
+    ] = contest;
 
     await fs.writeFile(
       filePath,
-      JSON.stringify(contests, null, 2),
+      JSON.stringify(
+        contests,
+        null,
+        2
+      ),
       "utf-8"
     );
 
@@ -361,17 +509,27 @@ async function upsertContestInOfficialResults(
     };
   }
 
-  contests.unshift(contest);
+  contests.unshift(
+    contest
+  );
 
   contests.sort(
     (a, b) =>
-      toNumber(b?.concurso) -
-      toNumber(a?.concurso)
+      toNumber(
+        b?.concurso
+      ) -
+      toNumber(
+        a?.concurso
+      )
   );
 
   await fs.writeFile(
     filePath,
-    JSON.stringify(contests, null, 2),
+    JSON.stringify(
+      contests,
+      null,
+      2
+    ),
     "utf-8"
   );
 
@@ -386,7 +544,9 @@ async function scrapeAndSaveLottery(
   source
 ) {
   const raw =
-    await fetchLotteryResult(source);
+    await fetchLotteryResult(
+      source
+    );
 
   const mapped =
     mapToResultsSchema(
@@ -422,7 +582,11 @@ async function scrapeAndSaveLottery(
 
   await fs.writeFile(
     previewOutputPath,
-    JSON.stringify([mapped], null, 2),
+    JSON.stringify(
+      [mapped],
+      null,
+      2
+    ),
     "utf-8"
   );
 
@@ -435,9 +599,8 @@ async function scrapeAndSaveLottery(
   return {
     key,
 
-    pageUrl: source.pageUrl,
-
-    apiUrl: source.apiUrl,
+    pageUrl:
+      source.pageUrl,
 
     previewOutputPath,
 
@@ -445,9 +608,11 @@ async function scrapeAndSaveLottery(
 
     officialUpdate,
 
-    concurso: mapped.concurso,
+    concurso:
+      mapped.concurso,
 
-    data: mapped.data
+    data:
+      mapped.data
   };
 }
 
@@ -456,7 +621,9 @@ async function scrapeLatestLottery(
   source
 ) {
   const raw =
-    await fetchLotteryResult(source);
+    await fetchLotteryResult(
+      source
+    );
 
   const contest =
     mapToResultsSchema(
@@ -467,9 +634,14 @@ async function scrapeLatestLottery(
   return {
     key,
 
-    concurso: contest.concurso,
+    pageUrl:
+      source.pageUrl,
 
-    data: contest.data,
+    concurso:
+      contest.concurso,
+
+    data:
+      contest.data,
 
     contest
   };
@@ -527,7 +699,9 @@ export async function scrapeResultadosCaixa() {
   };
 }
 
-export async function scrapeUltimoResultadoCaixa(key) {
+export async function scrapeUltimoResultadoCaixa(
+  key
+) {
   const normalizedKey =
     typeof key === "string"
       ? key.trim().toLowerCase()
@@ -550,7 +724,10 @@ export async function scrapeUltimoResultadoCaixa(key) {
   );
 }
 
-if (process.argv[1] === __filename) {
+if (
+  process.argv[1] ===
+  __filename
+) {
   scrapeResultadosCaixa()
     .then((result) => {
       console.log(
