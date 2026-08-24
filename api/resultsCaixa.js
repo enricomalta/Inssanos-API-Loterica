@@ -676,52 +676,64 @@ async function scrapeLatestLottery(
   };
 }
 
+function sleep(ms) {
+  return new Promise((resolve) =>
+    setTimeout(resolve, ms)
+  );
+}
+
 export async function scrapeResultadosCaixa() {
   const entries =
     Object.entries(
       LOTTERY_SOURCES
     );
 
-  const settled =
-    await Promise.allSettled(
-      entries.map(
-        ([key, source]) =>
-          scrapeAndSaveLottery(
-            key,
-            source
-          )
-      )
-    );
-
   const sucesso = [];
   const erros = [];
 
-  settled.forEach(
-    (result, index) => {
-      const [key] =
-        entries[index];
+  for (let index = 0; index < entries.length; index++) {
+    const [key, source] =
+      entries[index];
 
-      if (
-        result.status ===
-        "fulfilled"
-      ) {
-        sucesso.push(
-          result.value
+    try {
+      console.log(
+        `[RESULTADOS] Iniciando atualização: ${key}`
+      );
+
+      const result =
+        await scrapeAndSaveLottery(
+          key,
+          source
         );
 
-        return;
-      }
+      sucesso.push(result);
+
+      console.log(
+        `[RESULTADOS] ${key} atualizado com sucesso.`
+      );
+    } catch (error) {
+      console.error(
+        `[RESULTADOS] Erro em ${key}:`,
+        error?.message
+      );
 
       erros.push({
         key,
-
         error:
-          result.reason
-            ?.message ??
+          error?.message ??
           "Erro desconhecido"
       });
     }
-  );
+
+    // Aguarda antes de consultar a próxima loteria.
+    if (index < entries.length - 1) {
+      console.log(
+        "[RESULTADOS] Aguardando 5 segundos antes da próxima loteria..."
+      );
+
+      await sleep(5000);
+    }
+  }
 
   return {
     sucesso,
