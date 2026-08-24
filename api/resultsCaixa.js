@@ -2,44 +2,41 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const BROWSERQL_URL =
+  "https://production-sfo.browserless.io/chromium/bql";
+
+const PARAMS_URL =
+  "https://loterias.caixa.gov.br/Style%20Library/json/params.txt";
 
 const LOTTERY_SOURCES = {
   mega: {
     loteria: "megasena",
-
     pageUrl:
       "https://loterias.caixa.gov.br/Paginas/Mega-Sena.aspx",
-
     outputFile: "mega.json"
   },
 
   lotofacil: {
     loteria: "lotofacil",
-
     pageUrl:
       "https://loterias.caixa.gov.br/paginas/lotofacil.aspx",
-
     outputFile: "lotofacil.json"
   },
 
   quina: {
     loteria: "quina",
-
     pageUrl:
       "https://loterias.caixa.gov.br/Paginas/Quina.aspx",
-
     outputFile: "quina.json"
   },
 
   duplasena: {
     loteria: "duplasena",
-
     pageUrl:
       "https://loterias.caixa.gov.br/Paginas/Dupla-Sena.aspx",
-
     outputFile: "duplasena.json"
   }
 };
@@ -65,13 +62,11 @@ function sanitizeText(value) {
 }
 
 function buildLocal(raw) {
-  const localSorteio = sanitizeText(
-    raw?.localSorteio
-  );
+  const localSorteio =
+    sanitizeText(raw?.localSorteio);
 
-  const municipioUf = sanitizeText(
-    raw?.nomeMunicipioUFSorteio
-  );
+  const municipioUf =
+    sanitizeText(raw?.nomeMunicipioUFSorteio);
 
   if (localSorteio && municipioUf) {
     return `${localSorteio} em ${municipioUf}`;
@@ -86,21 +81,17 @@ function mapPremiacoes(rateios) {
   }
 
   return rateios.map((item) => ({
-    descricao: sanitizeText(
-      item?.descricaoFaixa
-    ),
+    descricao:
+      sanitizeText(item?.descricaoFaixa),
 
-    faixa: toNumber(
-      item?.faixa
-    ),
+    faixa:
+      toNumber(item?.faixa),
 
-    ganhadores: toNumber(
-      item?.numeroDeGanhadores
-    ),
+    ganhadores:
+      toNumber(item?.numeroDeGanhadores),
 
-    valorPremio: toNumber(
-      item?.valorPremio
-    )
+    valorPremio:
+      toNumber(item?.valorPremio)
   }));
 }
 
@@ -126,7 +117,9 @@ function mapDezenas(raw, loteria) {
     return Array.isArray(
       raw?.listaDezenas
     )
-      ? raw.listaDezenas
+      ? normalizeDezenas(
+          raw.listaDezenas
+        )
       : [];
   }
 
@@ -146,22 +139,20 @@ function mapDezenas(raw, loteria) {
   ];
 }
 
-function mapToResultsSchema(
-  raw,
-  loteria
-) {
+function mapToResultsSchema(raw, loteria) {
   return {
     loteria,
 
-    concurso: toNumber(
-      raw?.numero
-    ),
+    concurso:
+      toNumber(raw?.numero),
 
-    data: sanitizeText(
-      raw?.dataApuracao
-    ),
+    data:
+      sanitizeText(
+        raw?.dataApuracao
+      ),
 
-    local: buildLocal(raw),
+    local:
+      buildLocal(raw),
 
     concursoEspecial:
       toNumber(
@@ -175,10 +166,11 @@ function mapToResultsSchema(
         ? raw.dezenasSorteadasOrdemSorteio
         : [],
 
-    dezenas: mapDezenas(
-      raw,
-      loteria
-    ),
+    dezenas:
+      mapDezenas(
+        raw,
+        loteria
+      ),
 
     trevos: [],
 
@@ -193,13 +185,13 @@ function mapToResultsSchema(
 
     estadosPremiados: [],
 
-    observacao: sanitizeText(
-      raw?.observacao
-    ),
+    observacao:
+      sanitizeText(
+        raw?.observacao
+      ),
 
-    acumulou: Boolean(
-      raw?.acumulado
-    ),
+    acumulou:
+      Boolean(raw?.acumulado),
 
     proximoConcurso:
       toNumber(
@@ -245,8 +237,12 @@ function mapToResultsSchema(
   };
 }
 
-async function fetchLotteryResult(source) {
-  const token = process.env.BROWSERLESS_TOKEN;
+/**
+ * Executa uma mutation BrowserQL.
+ */
+async function executeBrowserQL(mutation) {
+  const token =
+    process.env.BROWSERLESS_TOKEN;
 
   if (!token) {
     throw new Error(
@@ -254,50 +250,14 @@ async function fetchLotteryResult(source) {
     );
   }
 
-  const browserQLUrl =
-    "https://production-sfo.browserless.io/chromium/bql";
-
-  const mutation = `
-    mutation CaixaRequests {
-      proxy(
-        type: [document, xhr]
-        country: BR
-        sticky: true
-      ) {
-        time
-      }
-
-      goto(
-        url: "${source.pageUrl}"
-        waitUntil: networkIdle
-      ) {
-        status
-      }
-
-      response(
-        url: "*portaldeloterias/api/*"
-      ) {
-        url
-        body
-      }
-    }
-  `;
-
-  console.log(
-    "[BROWSERQL] Abrindo página da CAIXA..."
-  );
-
-  console.log(
-    `[BROWSERQL] URL: ${source.pageUrl}`
-  );
-
   const response = await fetch(
-    `${browserQLUrl}?token=${encodeURIComponent(token)}`,
+    `${BROWSERQL_URL}?token=${encodeURIComponent(token)}`,
     {
       method: "POST",
 
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type":
+          "application/json"
       },
 
       body: JSON.stringify({
@@ -306,7 +266,8 @@ async function fetchLotteryResult(source) {
     }
   );
 
-  const text = await response.text();
+  const text =
+    await response.text();
 
   if (!response.ok) {
     throw new Error(
@@ -330,70 +291,213 @@ async function fetchLotteryResult(source) {
     );
   }
 
-  if (result.errors?.length) {
+  if (result?.errors?.length) {
     throw new Error(
-      `BrowserQL: ${result.errors
+      result.errors
         .map(
           (error) =>
             error?.message ||
-            "Erro desconhecido"
+            "Erro desconhecido no BrowserQL."
         )
-        .join("; ")}`
+        .join("; ")
     );
   }
 
-  const data = result?.data;
-
-  if (!data) {
+  if (!result?.data) {
     throw new Error(
       "BrowserQL não retornou data."
     );
   }
 
-  console.log(
-    "[BROWSERQL] Navegação concluída."
-  );
+  return result.data;
+}
+
+/**
+ * Busca a URL atual da API da CAIXA através
+ * do params.txt.
+ */
+async function resolveCaixaApiBaseUrl() {
+  const mutation = `
+    mutation CaixaParams {
+      proxy(
+        type: [document, xhr]
+        country: BR
+        sticky: true
+      ) {
+        time
+      }
+
+      paramsPage: goto(
+        url: "${PARAMS_URL}"
+        waitUntil: networkIdle
+      ) {
+        status
+      }
+
+      paramsResponse: response(
+        url: "*params.txt*"
+      ) {
+        url
+        body
+      }
+    }
+  `;
 
   console.log(
-    "[BROWSERQL] Status:",
-    data.goto?.status
+    "[BROWSERQL] Buscando params.txt da CAIXA..."
   );
 
-  const responses = Array.isArray(data.response)
-    ? data.response
-    : [];
-
-  console.log(
-    `[BROWSERQL] Respostas da API encontradas: ${responses.length}`
-  );
-
-  for (const item of responses) {
-    console.log(
-      "[BROWSERQL] API:",
-      item.url
+  const data =
+    await executeBrowserQL(
+      mutation
     );
 
-    console.log(
-      "[BROWSERQL] BODY:",
-      item.body?.slice(0, 500)
-    );
-  }
-
-  if (responses.length === 0) {
+  if (
+    data?.paramsPage?.status !== 200
+  ) {
     throw new Error(
-      "A página da CAIXA foi carregada, mas nenhuma resposta de /portaldeloterias/api/ foi capturada."
+      `CAIXA retornou HTTP ${
+        data?.paramsPage?.status ??
+        "unknown"
+      } ao buscar params.txt.`
     );
   }
 
-  const apiResponse = responses.find(
-    (item) =>
-      typeof item?.body === "string" &&
-      item.body.trim().startsWith("{")
+  const response =
+    Array.isArray(
+      data?.paramsResponse
+    )
+      ? data.paramsResponse[0]
+      : null;
+
+  if (!response?.body) {
+    throw new Error(
+      "CAIXA não retornou o conteúdo de params.txt."
+    );
+  }
+
+  let params;
+
+  try {
+    params = JSON.parse(
+      response.body
+    );
+  } catch {
+    throw new Error(
+      `params.txt da CAIXA não contém JSON válido: ${response.body.slice(
+        0,
+        500
+      )}`
+    );
+  }
+
+  const baseUrl =
+    typeof params?.urlapiloterias ===
+    "string"
+      ? params.urlapiloterias
+          .trim()
+          .replace(/\/+$/, "")
+      : "";
+
+  if (!baseUrl) {
+    throw new Error(
+      "urlapiloterias não encontrada em params.txt."
+    );
+  }
+
+  console.log(
+    `[BROWSERQL] API da CAIXA: ${baseUrl}`
   );
+
+  return baseUrl;
+}
+
+/**
+ * Busca o último resultado usando a URL
+ * dinâmica informada pela própria CAIXA.
+ */
+async function fetchLotteryResult(source) {
+  const baseUrl =
+    await resolveCaixaApiBaseUrl();
+
+  const apiUrl =
+    `${baseUrl}/api/${source.loteria}`;
+
+  console.log(
+    "[BROWSERQL] Buscando resultado..."
+  );
+
+  console.log(
+    `[BROWSERQL] API: ${apiUrl}`
+  );
+
+  const mutation = `
+    mutation CaixaResult {
+      proxy(
+        type: [document, xhr]
+        country: BR
+        sticky: true
+      ) {
+        time
+      }
+
+      apiPage: goto(
+        url: "${apiUrl}"
+        waitUntil: networkIdle
+      ) {
+        status
+      }
+
+      apiResponse: response(
+        url: "*portaldeloterias/api/*"
+      ) {
+        url
+        body
+      }
+    }
+  `;
+
+  const data =
+    await executeBrowserQL(
+      mutation
+    );
+
+  const status =
+    data?.apiPage?.status;
+
+  console.log(
+    `[BROWSERQL] API HTTP ${status ?? "unknown"}`
+  );
+
+  if (
+    typeof status === "number" &&
+    (status < 200 || status >= 300)
+  ) {
+    throw new Error(
+      `CAIXA retornou HTTP ${status}.`
+    );
+  }
+
+  const responses =
+    Array.isArray(
+      data?.apiResponse
+    )
+      ? data.apiResponse
+      : [];
+
+  const apiResponse =
+    responses.find(
+      (item) =>
+        typeof item?.body ===
+          "string" &&
+        item.body
+          .trim()
+          .startsWith("{")
+    );
 
   if (!apiResponse) {
     throw new Error(
-      "A CAIXA retornou a API, mas o body não contém JSON."
+      "A API da CAIXA não retornou um JSON válido."
     );
   }
 
@@ -403,7 +507,7 @@ async function fetchLotteryResult(source) {
     );
   } catch {
     throw new Error(
-      `A resposta da CAIXA não é JSON válido: ${apiResponse.body.slice(
+      `Resposta da CAIXA não é JSON válido: ${apiResponse.body.slice(
         0,
         500
       )}`
@@ -427,7 +531,6 @@ async function readJsonArray(
     return Array.isArray(parsed)
       ? parsed
       : [];
-
   } catch (error) {
     if (
       error?.code ===
@@ -449,17 +552,19 @@ async function upsertContestInOfficialResults(
       filePath
     );
 
+  const contestNumber =
+    toNumber(
+      contest?.concurso,
+      -1
+    );
+
   const existingIndex =
     contests.findIndex(
       (item) =>
         toNumber(
           item?.concurso,
           -1
-        ) ===
-        toNumber(
-          contest?.concurso,
-          -1
-        )
+        ) === contestNumber
     );
 
   if (
@@ -578,17 +683,17 @@ async function scrapeAndSaveLottery(
     pageUrl:
       source.pageUrl,
 
-    previewOutputPath,
-
-    officialOutputPath,
-
-    officialUpdate,
-
     concurso:
       mapped.concurso,
 
     data:
-      mapped.data
+      mapped.data,
+
+    previewOutputPath,
+
+    officialOutputPath,
+
+    officialUpdate
   };
 }
 
@@ -601,7 +706,7 @@ async function scrapeLatestLottery(
       source
     );
 
-  const contest =
+  const mapped =
     mapToResultsSchema(
       raw,
       source.loteria
@@ -614,12 +719,13 @@ async function scrapeLatestLottery(
       source.pageUrl,
 
     concurso:
-      contest.concurso,
+      mapped.concurso,
 
     data:
-      contest.data,
+      mapped.data,
 
-    contest
+    contest:
+      mapped
   };
 }
 
@@ -663,7 +769,8 @@ export async function scrapeResultadosCaixa() {
         key,
 
         error:
-          result.reason?.message ??
+          result.reason
+            ?.message ??
           "Erro desconhecido"
       });
     }
@@ -680,7 +787,9 @@ export async function scrapeUltimoResultadoCaixa(
 ) {
   const normalizedKey =
     typeof key === "string"
-      ? key.trim().toLowerCase()
+      ? key
+          .trim()
+          .toLowerCase()
       : "";
 
   const source =
@@ -690,7 +799,7 @@ export async function scrapeUltimoResultadoCaixa(
 
   if (!source) {
     throw new Error(
-      `Loteria inválida: ${key}`
+      `Loteria invalida: ${key}`
     );
   }
 
