@@ -275,8 +275,7 @@ async function fetchLotteryResult(source) {
       }
 
       response(
-        url: "*"
-        type: xhr
+        url: "*portaldeloterias/api/*"
       ) {
         url
         body
@@ -307,8 +306,7 @@ async function fetchLotteryResult(source) {
     }
   );
 
-  const text =
-    await response.text();
+  const text = await response.text();
 
   if (!response.ok) {
     throw new Error(
@@ -344,8 +342,7 @@ async function fetchLotteryResult(source) {
     );
   }
 
-  const data =
-    result?.data;
+  const data = result?.data;
 
   if (!data) {
     throw new Error(
@@ -358,62 +355,47 @@ async function fetchLotteryResult(source) {
   );
 
   console.log(
-    "[BROWSERQL] Status da página:",
+    "[BROWSERQL] Status:",
     data.goto?.status
   );
 
-  const responses =
-    Array.isArray(data.response)
-      ? data.response
-      : [];
+  const responses = Array.isArray(data.response)
+    ? data.response
+    : [];
 
   console.log(
-    `[BROWSERQL] XHRs capturados: ${responses.length}`
+    `[BROWSERQL] Respostas da API encontradas: ${responses.length}`
   );
 
   for (const item of responses) {
     console.log(
-      `[BROWSERQL] XHR: ${item.url}`
+      "[BROWSERQL] API:",
+      item.url
+    );
+
+    console.log(
+      "[BROWSERQL] BODY:",
+      item.body?.slice(0, 500)
     );
   }
 
-  /*
-   * Procuramos a resposta da API
-   * da própria CAIXA.
-   */
-
-  const apiResponse =
-    responses.find(
-      (item) =>
-        typeof item?.url === "string" &&
-        item.url.includes(
-          "/portaldeloterias/api/"
-        ) &&
-        typeof item?.body === "string" &&
-        item.body.trim().startsWith("{")
+  if (responses.length === 0) {
+    throw new Error(
+      "A página da CAIXA foi carregada, mas nenhuma resposta de /portaldeloterias/api/ foi capturada."
     );
+  }
+
+  const apiResponse = responses.find(
+    (item) =>
+      typeof item?.body === "string" &&
+      item.body.trim().startsWith("{")
+  );
 
   if (!apiResponse) {
     throw new Error(
-      "A página da CAIXA foi carregada, mas nenhuma resposta JSON da API de loteria foi encontrada."
+      "A CAIXA retornou a API, mas o body não contém JSON."
     );
   }
-
-  console.log(
-    "[BROWSERQL] API encontrada:"
-  );
-
-  console.log(
-    apiResponse.url
-  );
-
-  console.log(
-    "[BROWSERQL] Resposta:",
-    apiResponse.body.slice(
-      0,
-      500
-    )
-  );
 
   try {
     return JSON.parse(
