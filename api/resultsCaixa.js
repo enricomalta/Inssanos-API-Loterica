@@ -4,6 +4,15 @@ import {
   getR2PublicUrl
 } from "../src/services/r2StorageService.js";
 
+import {
+  loadLotteryMetadata
+} from "../src/lottery/metadata.js";
+
+import {
+  shouldCheckLottery,
+  getCacheTTL
+} from "../src/lottery/schedule.js";
+
 const BROWSERQL_URL =
   "https://production-sfo.browserless.io/chromium/bql";
 
@@ -517,7 +526,8 @@ async function fetchLotteryResult(source) {
 /**
  * Lê o arquivo oficial da loteria no R2,
  * atualiza ou insere o concurso e salva
- * novamente no R2.
+ * novamente no R2 Calcula o tempo restante
+ * ate o proximo concurso e aplica de cache.
  */
 async function upsertContestInOfficialResults(
   objectKey,
@@ -570,9 +580,12 @@ async function upsertContestInOfficialResults(
       )
   );
 
+  const cacheTTL = getCacheTTL();
+
   await writeR2Json(
     objectKey,
-    contests
+    contests,
+    `public, max-age=${cacheTTL}`
   );
 
   return {
@@ -683,28 +696,53 @@ function sleep(ms) {
 }
 
 export async function scrapeResultadosCaixa() {
+  const metadata =
+    await loadLotteryMetadata();
+
   const entries =
-    Object.entries(
-      LOTTERY_SOURCES
-    );
+    Object.entries(LOTTERY_SOURCES)
+      .filter(([key]) => {
+        const info =
+          metadata?.[key];
+
+        if (!info) {
+          console.warn(
+            `[RESULTADOS] Metadata não encontrada para: ${key}`
+          );
+
+          return false;
+        }
+
+        const shouldCheck =
+          shouldCheckLottery(info);
+
+        console.log(
+          `[RESULTADOS] ${key}: ${
+            shouldCheck
+              ? "VERIFICAR"
+              : "IGNORAR"
+          }`
+        );
+
+        return shouldCheck;
+      });
 
   const sucesso = [];
   const erros = [];
 
+
   for (let index = 0; index < entries.length; index++) {
-    const [key, source] =
-      entries[index];
+    const [key, source] = entries[index];
 
     try {
       console.log(
         `[RESULTADOS] Iniciando atualização: ${key}`
       );
 
-      const result =
-        await scrapeAndSaveLottery(
-          key,
-          source
-        );
+      const result = await scrapeAndSaveLottery(
+        key,
+        source
+      );
 
       sucesso.push(result);
 
@@ -725,7 +763,6 @@ export async function scrapeResultadosCaixa() {
       });
     }
 
-    // Aguarda antes de consultar a próxima loteria.
     if (index < entries.length - 1) {
       console.log(
         "[RESULTADOS] Aguardando 5 segundos antes da próxima loteria..."

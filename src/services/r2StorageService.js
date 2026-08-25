@@ -113,10 +113,31 @@ export async function readR2JsonArray(key) {
   return parsed;
 }
 
+export async function readR2Json(key) {
+  const raw = await readR2Object(key);
+
+  if (raw === null) {
+    return null;
+  }
+
+  if (!raw.trim()) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    throw new Error(
+      `O arquivo R2 ${key} não contém JSON válido.`
+    );
+  }
+}
+
 export async function writeR2Object(
   key,
   content,
-  contentType = "application/json"
+  contentType = "application/json",
+  cacheControl = "public, max-age=300"
 ) {
   const normalizedKey = normalizeKey(key);
 
@@ -130,7 +151,7 @@ export async function writeR2Object(
       Key: normalizedKey,
       Body: content,
       ContentType: contentType,
-      CacheControl: "public, max-age=300"
+      CacheControl: cacheControl
     })
   );
 
@@ -141,7 +162,8 @@ export async function writeR2Object(
 
 export async function writeR2Json(
   key,
-  value
+  value,
+  cacheControl = "public, max-age=300"
 ) {
   const content = JSON.stringify(
     value,
@@ -152,7 +174,8 @@ export async function writeR2Json(
   return writeR2Object(
     key,
     content,
-    "application/json; charset=utf-8"
+    "application/json; charset=utf-8",
+    cacheControl
   );
 }
 

@@ -26,6 +26,7 @@ Loterias suportadas:
 - Cada endpoint le um arquivo local em results.
 - A API calcula frequencia, resumo, previsao heuristica e classificacao de acumulou.
 - O cache usa memoria da instancia e invalida automaticamente quando o hash do JSON muda.
+- O cache TTL mantem o arquivo com base na logica de tempo ate proximo concurso onde teoricamente o arquivo de resultados mudaria
 
 Arquivos de dados oficiais:
 
@@ -42,9 +43,10 @@ node api/resultsCaixa.js
 
 Esse script faz:
 
-- consulta dos dados oficiais da Caixa para 4 loterias
+- identifica concursos possivelmente disponivel
+- consulta dos dados oficiais da Caixa para 4 loterias (ate o momento)
+- scrapper do resultado salva e atualiza arquivo com cache dinamico
 - mapeamento para o mesmo schema dos arquivos em results
-- upsert por concurso (atualiza se existe, insere se nao existe)
 - ordenacao por concurso decrescente
 - geracao de preview em results/scraped
 
@@ -201,6 +203,7 @@ Invalidacao:
 
 - a chave de cache inclui hash SHA-256 do JSON da loteria
 - ao atualizar o arquivo de resultados, o hash muda e o cache antigo nao e reutilizado
+- os arquivos de resultados possuem cache ate 1h apos o horario do proximo concurso garantindo sempre os arquivos frescos a API
 
 ## Deploy na Vercel
 
