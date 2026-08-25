@@ -5,6 +5,7 @@ import quinaRoute from "../api/quina.js";
 import lotofacilRoute from "../api/lotofacil.js";
 import duplaSenaRoute from "../api/duplasena.js";
 
+import resultadoRoute from "../api/resultado.js";
 import resultadosRoute from "../api/resultados.js";
 import scrapeResultadoRoute from "../api/scrape-resultado.js";
 import atualizarResultadosRoute from "../api/atualizar-resultados.js";
@@ -19,6 +20,8 @@ app.use("/api/quina", quinaRoute);
 app.use("/api/lotofacil", lotofacilRoute);
 app.use("/api/duplasena", duplaSenaRoute);
 
+
+app.use("/api/resultado", resultadoRoute);
 app.use("/api/resultados", resultadosRoute);
 app.use("/api/scrape-resultado", scrapeResultadoRoute);
 app.use("/api/atualizar-resultados", atualizarResultadosRoute);
