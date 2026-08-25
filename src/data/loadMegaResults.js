@@ -10,7 +10,7 @@ import {
 
 export async function loadMegaResults() {
   const { contests } =
-    await loadLotteryResultsWithHash("mega");
+    await loadLotteryResultsWithHash("megasena");
 
   return contests;
 }
@@ -20,7 +20,7 @@ export async function loadMegaResultsWithHash() {
     contests,
     dataHash
   } =
-    await loadLotteryResultsWithHash("mega");
+    await loadLotteryResultsWithHash("megasena");
 
   return {
     contests,

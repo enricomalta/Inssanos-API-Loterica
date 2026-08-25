@@ -11,11 +11,11 @@ const PARAMS_URL =
   "https://loterias.caixa.gov.br/Style%20Library/json/params.txt";
 
 const LOTTERY_SOURCES = {
-  mega: {
+  megasena: {
     loteria: "megasena",
     pageUrl:
       "https://loterias.caixa.gov.br/Paginas/Mega-Sena.aspx",
-    outputFile: "mega.json"
+    outputFile: "megasena.json"
   },
 
   lotofacil: {

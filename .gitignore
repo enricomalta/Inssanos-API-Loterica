@@ -4,3 +4,6 @@
 node_modules
 *.zip
 *.rar
+
+scripts/output
+scripts/json

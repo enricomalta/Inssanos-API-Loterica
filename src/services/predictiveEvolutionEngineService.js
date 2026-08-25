@@ -1325,9 +1325,107 @@ export class PredictiveEvolutionEngineService {
     contests,
     config,
     context = {},
-    testedHashes
+    testedHashes,
+    onProgress = null
   }) {
     const evaluated = [];
+
+    const startedAt =
+      Date.now();
+
+    const total =
+      Array.isArray(population)
+        ? population.length
+        : 0;
+
+    let completed = 0;
+
+    /**
+     * Atualiza o progresso da geração.
+     *
+     * Usa \r para sobrescrever a mesma linha
+     * no terminal, evitando milhares de linhas.
+     */
+    const reportProgress = () => {
+      const progress =
+        total > 0
+          ? Math.min(
+              100,
+              Math.round(
+                (completed / total) * 100
+              )
+            )
+          : 100;
+
+      const elapsedSeconds =
+        (Date.now() - startedAt) /
+        1000;
+
+      const elapsed =
+        elapsedSeconds.toFixed(1);
+
+      const message =
+        `[PREDICTIVE EVOLUTION] ` +
+        `Geração ${generation + 1}/${config.generations} | ` +
+        `${progress}% | ` +
+        `${completed}/${total} | ` +
+        `${elapsed}s`;
+
+      if (
+        typeof onProgress ===
+        "function"
+      ) {
+        onProgress({
+          generation:
+            generation + 1,
+
+          generations:
+            config.generations,
+
+          progress,
+
+          completed,
+
+          total,
+
+          elapsedMs:
+            Date.now() -
+            startedAt,
+
+          elapsedSeconds
+        });
+
+        return;
+      }
+
+      /**
+       * Fallback para o terminal.
+       */
+      if (
+        process?.stdout?.isTTY
+      ) {
+        process.stdout.write(
+          `\r${message}`
+        );
+
+        if (
+          completed >= total
+        ) {
+          process.stdout.write(
+            "\n"
+          );
+        }
+      } else {
+        this.logger.log?.(
+          message
+        );
+      }
+    };
+
+    /**
+     * Mostra imediatamente o início.
+     */
+    reportProgress();
 
     for (
       const individual of population
@@ -1337,10 +1435,21 @@ export class PredictiveEvolutionEngineService {
           individual.strategy
         );
 
+      /**
+       * Estratégia já testada.
+       *
+       * Mesmo sendo ignorada, precisamos
+       * contabilizá-la para o progresso não
+       * ficar preso em, por exemplo, 97%.
+       */
       if (
         config.preventDuplicates &&
         testedHashes.has(hash)
       ) {
+        completed += 1;
+
+        reportProgress();
+
         continue;
       }
 
@@ -1369,6 +1478,28 @@ export class PredictiveEvolutionEngineService {
       evaluated.push(
         result
       );
+
+      completed += 1;
+
+      reportProgress();
+    }
+
+    /**
+     * Garante 100% no final, inclusive quando
+     * a população estiver vazia.
+     */
+    if (
+      total === 0
+    ) {
+      completed = 0;
+
+      reportProgress();
+    } else if (
+      completed < total
+    ) {
+      completed = total;
+
+      reportProgress();
     }
 
     /**
@@ -1471,7 +1602,8 @@ export class PredictiveEvolutionEngineService {
     config: customConfig = {},
     initialPopulation = null,
     context = {},
-    onGeneration = null
+    onGeneration = null,
+    onProgress = null
   } = {}) {
     const config =
       normalizeConfig(
@@ -1545,7 +1677,9 @@ export class PredictiveEvolutionEngineService {
 
           context,
 
-          testedHashes
+          testedHashes,
+
+          onProgress
         });
 
       history.push(

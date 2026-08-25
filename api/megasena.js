@@ -2,7 +2,7 @@ import { analyzeLottery, applyResponseCacheHeaders } from "../src/services/lotte
 
 export default async function handler(request, response) {
   try {
-    const { payload, cacheStatus } = await analyzeLottery("mega", request?.query);
+    const { payload, cacheStatus } = await analyzeLottery("megasena", request?.query);
     applyResponseCacheHeaders(response, cacheStatus);
 
     response.status(200).json(payload);

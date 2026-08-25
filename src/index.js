@@ -1,6 +1,6 @@
 import express from "express";
 
-import megaRoute from "../api/mega.js";
+import megaRoute from "../api/megasena.js";
 import quinaRoute from "../api/quina.js";
 import lotofacilRoute from "../api/lotofacil.js";
 import duplaSenaRoute from "../api/duplasena.js";
@@ -14,7 +14,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
 
-app.use("/api/mega", megaRoute);
+app.use("/api/megasena", megaRoute);
 app.use("/api/quina", quinaRoute);
 app.use("/api/lotofacil", lotofacilRoute);
 app.use("/api/duplasena", duplaSenaRoute);
@@ -25,7 +25,7 @@ app.use("/api/atualizar-resultados", atualizarResultadosRoute);
 
 app.get("/", (req, res) => {
   res.json({
-    status: "Mega Node API online"
+    status: "Inssanos API Online DEV: @Enrico Malta"
   });
 });
 

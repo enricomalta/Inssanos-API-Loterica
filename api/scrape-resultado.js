@@ -1,10 +1,10 @@
 import { scrapeUltimoResultadoCaixa } from "./resultsCaixa.js";
 
-const SUPPORTED_LOTTERIES = new Set(["mega", "quina", "lotofacil", "duplasena"]);
+const SUPPORTED_LOTTERIES = new Set(["megasena", "quina", "lotofacil", "duplasena"]);
 
 function parseLotteryKey(value) {
   if (typeof value !== "string") {
-    return "mega";
+    return "megasena";
   }
 
   const normalized = value.trim().toLowerCase();

@@ -1,70 +1,81 @@
+import express from "express";
+
 import { loadLotteryResultsWithHash } from "../src/data/loadMegaResults.js";
 import { getLotteryConfig } from "../src/config/constants.js";
-import { parsePositiveInt } from "../src/utils/query.js";
 
-const SUPPORTED_LOTTERIES = new Set(["mega", "quina", "lotofacil", "duplasena"]);
+const router = express.Router();
+
+const SUPPORTED_LOTTERIES = new Set([
+  "megasena",
+  "quina",
+  "lotofacil",
+  "duplasena"
+]);
+
+const LOTTERY_ALIASES = {
+  megasena: "megasena",
+  quina: "quina",
+  lotofacil: "lotofacil",
+  duplasena: "duplasena"
+};
 
 function parseLotteryKey(value) {
   if (typeof value !== "string") {
-    return "mega";
+    return "megasena";
   }
 
   const normalized = value.trim().toLowerCase();
-  return SUPPORTED_LOTTERIES.has(normalized) ? normalized : null;
+
+  return LOTTERY_ALIASES[normalized] ?? null;
 }
 
-function applyResultCacheHeaders(response) {
-  if (typeof response?.setHeader !== "function") {
-    return;
-  }
 
-  response.setHeader("Cache-Control", "public, max-age=0, s-maxage=300, stale-while-revalidate=600");
-}
-
-export default async function handler(request, response) {
-  if (request?.method && request.method !== "GET") {
-    response.setHeader("Allow", "GET");
-    response.status(405).json({ error: "Metodo nao permitido." });
-    return;
-  }
-
-  const lotteryKey = parseLotteryKey(request?.query?.loteria);
+/*
+ * GET /api/resultados/latest?loteria=megasena
+ */
+router.get("/latest", async (req, res) => {
+  const lotteryKey = parseLotteryKey(req.query.loteria);
 
   if (!lotteryKey) {
-    response.status(400).json({
+    return res.status(400).json({
       error: "Loteria invalida.",
       allowed: [...SUPPORTED_LOTTERIES]
     });
-    return;
   }
 
   try {
-    const config = getLotteryConfig(lotteryKey);
-    const { contests, dataHash } = await loadLotteryResultsWithHash(lotteryKey);
+    const { contests } = await loadLotteryResultsWithHash(lotteryKey);
 
-    const ultimos = parsePositiveInt(request?.query?.ultimos, contests.length, {
-      min: 1,
-      max: Math.max(contests.length, 1)
-    });
+    if (!contests || contests.length === 0) {
+      return res.status(404).json({
+        error: `Nenhum concurso encontrado para ${lotteryKey}.`
+      });
+    }
 
-    const payload = {
-      updatedAt: new Date().toISOString(),
-      loteria: {
-        key: config.key,
-        nome: config.nome
-      },
-      dataHash,
-      total: contests.length,
-      retornados: ultimos,
-      contests: contests.slice(0, ultimos)
-    };
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=0, s-maxage=300, stale-while-revalidate=600"
+    );
 
-    applyResultCacheHeaders(response);
-    response.status(200).json(payload);
+    return res.status(200).json(contests[0]);
+
   } catch (error) {
-    response.status(500).json({
-      error: "Falha ao obter resultados brutos.",
+    console.error("Erro ao buscar último concurso:", error);
+
+    return res.status(500).json({
+      error: "Falha ao obter último concurso.",
       detail: error.message
     });
   }
-}
+});
+
+
+/*
+ * OUTRA ROTA EXISTENTE
+ * GET /api/resultados?loteria=mega&ultimos=1
+ *
+ * mantém seu código atual aqui...
+ */
+
+
+export default router;

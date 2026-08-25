@@ -1,10 +1,10 @@
 export const LOTTERY_CONFIGS = {
-  mega: {
-    key: "mega",
+  megasena: {
+    key: "megasena",
     nome: "Mega-Sena",
     totalNumbers: 60,
     pickCount: 6,
-    jsonFile: "mega.json"
+    jsonFile: "megasena.json"
   },
 
   quina: {
@@ -53,10 +53,10 @@ export function getLotteryConfig(lotteryKey) {
 // Compatibilidade com implementacoes antigas
 // focadas em Mega.
 export const TOTAL_DEZENAS_MEGA =
-  LOTTERY_CONFIGS.mega.totalNumbers;
+  LOTTERY_CONFIGS.megasena.totalNumbers;
 
 export const DEZENAS_POR_CONCURSO =
-  LOTTERY_CONFIGS.mega.pickCount;
+  LOTTERY_CONFIGS.megasena.pickCount;
 
 export const MEGA_JSON_RELATIVE_PATH =
-  LOTTERY_CONFIGS.mega.jsonFile;
+  LOTTERY_CONFIGS.megasena.jsonFile;
