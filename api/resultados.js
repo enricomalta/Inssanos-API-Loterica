@@ -1,9 +1,8 @@
 import express from "express";
 
-import { loadLotteryResultsWithHash } from "../src/data/loadMegaResults.js";
-import { readR2JsonArray } from "../src/services/r2StorageService.js";
-import { getLotteryConfig } from "../src/config/constants.js";
-import latestHandler from "./resultados/latest.js";
+import {
+  loadLotteryResultsWithHash
+} from "../src/data/loadMegaResults.js";
 
 const router = express.Router();
 
@@ -26,34 +25,72 @@ function parseLotteryKey(value) {
     return "megasena";
   }
 
-  const normalized = value.trim().toLowerCase();
+  const normalized =
+    value.trim().toLowerCase();
 
   return LOTTERY_ALIASES[normalized] ?? null;
 }
-
 
 /*
  * GET /api/resultados/latest?loteria=megasena
  */
 router.get("/latest", async (req, res) => {
-  return latestHandler(req, res);
-});
-
-
-/*
- * 
- * GET /api/resultados?loteria=megasena&concurso=1
- */
-
-/*
- * GET /api/resultados/concurso?loteria=duplasena&concurso=2999
- */
-router.get("/concurso", async (req, res) => {
   const lotteryKey =
     parseLotteryKey(req.query.loteria);
 
+  if (!lotteryKey) {
+    return res.status(400).json({
+      error: "Loteria invalida.",
+      allowed: [...SUPPORTED_LOTTERIES]
+    });
+  }
+
+  try {
+    const { contests } =
+      await loadLotteryResultsWithHash(
+        lotteryKey
+      );
+
+    if (!contests || contests.length === 0) {
+      return res.status(404).json({
+        error:
+          `Nenhum concurso encontrado para ${lotteryKey}.`
+      });
+    }
+
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=0, s-maxage=300, stale-while-revalidate=600"
+    );
+
+    return res.status(200).json(
+      contests[0]
+    );
+
+  } catch (error) {
+    console.error(
+      "Erro ao buscar último concurso:",
+      error
+    );
+
+    return res.status(500).json({
+      error:
+        "Falha ao obter último concurso.",
+      detail:
+        error?.message
+    });
+  }
+});
+
+/*
+ * GET /api/resultados/concurso?loteria=megasena&concurso=3000
+ */
+router.get("/:loteria/:concurso", async (req, res) => {
+  const lotteryKey =
+    parseLotteryKey(req.params.loteria);
+
   const contestNumber =
-    Number(req.query.concurso);
+    Number(req.params.concurso);
 
   if (!lotteryKey) {
     return res.status(400).json({
@@ -67,29 +104,26 @@ router.get("/concurso", async (req, res) => {
     contestNumber <= 0
   ) {
     return res.status(400).json({
-      error: "Número do concurso inválido."
+      error: "Concurso invalido."
     });
   }
 
-  const files = {
-    megasena: "megasena.json",
-    quina: "quina.json",
-    lotofacil: "lotofacil.json",
-    duplasena: "duplasena.json"
-  };
-
   try {
     console.log(
-      `[CONCURSO] Buscando ${lotteryKey} concurso ${contestNumber}`
+      `[CONCURSO] Carregando ${lotteryKey}...`
     );
 
-    const contests =
-      await readR2JsonArray(
-        files[lotteryKey]
+    const { contests } =
+      await loadLotteryResultsWithHash(
+        lotteryKey
       );
 
+    console.log(
+      `[CONCURSO] Concursos carregados: ${contests?.length ?? 0}`
+    );
+
     const contest =
-      contests.find(
+      contests?.find(
         (item) =>
           Number(item?.concurso) ===
           contestNumber
@@ -102,16 +136,22 @@ router.get("/concurso", async (req, res) => {
       });
     }
 
+    console.log(
+      `[CONCURSO] Concurso ${contestNumber} encontrado.`
+    );
+
     res.setHeader(
       "Cache-Control",
       "public, max-age=0, s-maxage=300, stale-while-revalidate=600"
     );
 
-    return res.status(200).json(contest);
+    return res.status(200).json(
+      contest
+    );
 
   } catch (error) {
     console.error(
-      "[CONCURSO] Erro ao buscar concurso:",
+      "[CONCURSO] Erro:",
       error
     );
 
@@ -124,6 +164,5 @@ router.get("/concurso", async (req, res) => {
     });
   }
 });
-
 
 export default router;
