@@ -197,6 +197,7 @@ https://www.browserless.io/account/bql
 
 exemplo de Request:
 
+```text
 mutation CaixaRequests {
   proxy(
     type: [document, xhr]
@@ -234,6 +235,7 @@ mutation CaixaRequests {
     body
   }
 }
+```
 
 ## Cloudflare Bucket v1.5
 
