@@ -84,13 +84,19 @@ Base URL:
 
 Rotas:
 
-Machine Learning Rotas:
+Machine Learning Rotas Todos Concurso medias de 10:
 - https://inssanos-api.vercel.app/api/megasena
 - https://inssanos-api.vercel.app/api/quina
 - https://inssanos-api.vercel.app/api/lotofacil
 - https://inssanos-api.vercel.app/api/duplasena
 
-Resultados Salvos:
+Resultados Salvos por Quantidade Decrescente:
+- https://inssanos-api.vercel.app/api/resultados/latest?loteria=megasena
+- https://inssanos-api.vercel.app/api/resultados/latest?loteria=quina
+- https://inssanos-api.vercel.app/api/resultados/latest?loteria=lotofacil
+- https://inssanos-api.vercel.app/api/resultados/latest?loteria=duplasena
+
+Ultimo Resultado Salvo :
 - https://inssanos-api.vercel.app/api/resultados?loteria=megasena&ultimos=10
 - https://inssanos-api.vercel.app/api/resultados?loteria=quina&ultimos=10
 - https://inssanos-api.vercel.app/api/resultados?loteria=lotofacil&ultimos=10
@@ -129,8 +135,9 @@ Exemplo com seed baseado no proximo sorteio:
 
 Para /api/resultados:
 
-- loteria: megasena | quina | lotofacil | duplasena (padrao: megasena)
-- ultimos: quantidade de concursos retornados (padrao: todos)
+- latest: retorna o ultimo concurso (padrao: megasena)
+- loteria: megasena | quina | lotofacil | duplasena
+- exemplo: /api/resultados/latest?loteria=quina
 
 Para /api/scrape-resultado:
 
