@@ -189,3 +189,52 @@ Arquivo de configuracao:
 - vercel.json
 
 O includeFiles garante que os JSONs de results sejam empacotados dentro das funcoes serverless, evitando erro ENOENT em producao.
+
+## Bypass Caixa
+
+Para podermos bypassar a caixa tivemos que simular um ambiente legitmo atraves de um navegador com cookies para ter acesso ao params.txt que informa qual URL_API da Caixa vai sair o resultado da sessão do cookie que capturamos, ao esperar a chamada da API, obtemos os resultados via scrape usando Browserless com configuração de Proxy Ip Residencial Brasileiro (importante pois o ip da vercel é bloqueado na caixa por ser de data-center)
+https://www.browserless.io/account/bql
+
+exemplo de Request:
+
+mutation CaixaRequests {
+  proxy(
+    type: [document, xhr]
+    country: BR
+    sticky: true
+  ) {
+    time
+  }
+
+  paramsPage: goto(
+    url: "https://loterias.caixa.gov.br/Style%20Library/json/params.txt"
+    waitUntil: networkIdle
+  ) {
+    status
+  }
+
+  paramsResponse: response(
+    url: "*params.txt*"
+  ) {
+    url
+    body
+  }
+
+  apiPage: goto(
+    url: "https://servicebus3.caixa.gov.br/portaldeloterias/api/megasena"
+    waitUntil: networkIdle
+  ) {
+    status
+  }
+
+  apiResponse: response(
+    url: "*portaldeloterias/api/megasena*"
+  ) {
+    url
+    body
+  }
+}
+
+## Cloudflare Bucket v1.5
+
+Os arquivos agora são armazenados via CDN na Cloudflare para obteção dos resultados, analises e atualização o Cron ao identificar atualização na plataforma Inssanos irá disparar uma chamada na API que atualiza os resultados e salvos os novos dados nos arquivos .jsons de sua loteria com a mesma arquitetura dos arquivos locais antiga do projeto.
