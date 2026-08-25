@@ -1,4 +1,4 @@
-# Mega Node Vercel
+# Inssanos API
 
 Projeto Node.js para analise de loterias da Caixa com dados locais em JSON e deploy na Vercel.
 
@@ -17,7 +17,7 @@ Loterias suportadas:
 
 Arquivos de dados oficiais:
 
-- results/mega.json
+- results/megasena.json
 - results/quina.json
 - results/lotofacil.json
 - results/duplasena.json
@@ -38,7 +38,7 @@ Esse script faz:
 
 Arquivos de preview:
 
-- results/scraped/mega.json
+- results/scraped/megasena.json
 - results/scraped/quina.json
 - results/scraped/lotofacil.json
 - results/scraped/duplasena.json
@@ -59,7 +59,7 @@ npm run dev:api
 
 Rotas locais:
 
-- http://localhost:3000/api/mega
+- http://localhost:3000/api/megasena
 - http://localhost:3000/api/quina
 - http://localhost:3000/api/lotofacil
 - http://localhost:3000/api/duplasena
@@ -73,38 +73,38 @@ https://inssanos-api.vercel.app
 Rotas:
 
 Machine Learning Rotas:
-- https://inssanos-api.vercel.app/api/mega
+- https://inssanos-api.vercel.app/api/megasena
 - https://inssanos-api.vercel.app/api/quina
 - https://inssanos-api.vercel.app/api/lotofacil
 - https://inssanos-api.vercel.app/api/duplasena
 
 Resultados Salvos:
-- https://inssanos-api.vercel.app/api/resultados?loteria=mega&ultimos=10
+- https://inssanos-api.vercel.app/api/resultados?loteria=megasena&ultimos=10
 - https://inssanos-api.vercel.app/api/resultados?loteria=quina&ultimos=10
 - https://inssanos-api.vercel.app/api/resultados?loteria=lotofacil&ultimos=10
 - https://inssanos-api.vercel.app/api/resultados?loteria=duplasena&ultimos=10
 
 Resultado Scrap Caixa Oficial:
-- https://inssanos-api.vercel.app/api/scrape-resultado?loteria=mega
+- https://inssanos-api.vercel.app/api/scrape-resultado?loteria=megasena
 - https://inssanos-api.vercel.app/api/scrape-resultado?loteria=quina
 - https://inssanos-api.vercel.app/api/scrape-resultado?loteria=lotofacil
 - https://inssanos-api.vercel.app/api/scrape-resultado?loteria=duplasena
 
 Exemplo com parametros:
 
-https://inssanos-api.vercel.app/api/mega?top=10&ultimos=500&medias=20
+https://inssanos-api.vercel.app/api/megasena?top=10&ultimos=500&medias=20
 
 Exemplo com horario seedado para predicao alternativa:
 
-https://inssanos-api.vercel.app/api/mega?top=10&ultimos=500&medias=20&seedAt=2026-05-24T20:00:00-03:00
+https://inssanos-api.vercel.app/api/megasena?top=10&ultimos=500&medias=20&seedAt=2026-05-24T20:00:00-03:00
 
 Exemplo com seed do horario atual:
 
-https://inssanos-api.vercel.app/api/mega?top=10&ultimos=500&medias=20&seedMode=now
+https://inssanos-api.vercel.app/api/megasena?top=10&ultimos=500&medias=20&seedMode=now
 
 Exemplo com seed baseado no proximo sorteio:
 
-https://inssanos-api.vercel.app/api/mega?top=10&ultimos=500&medias=20&seedMode=nextDraw
+https://inssanos-api.vercel.app/api/megasena?top=10&ultimos=500&medias=20&seedMode=nextDraw
 
 ## Parametros opcionais
 
@@ -116,12 +116,12 @@ https://inssanos-api.vercel.app/api/mega?top=10&ultimos=500&medias=20&seedMode=n
 
 Para /api/resultados:
 
-- loteria: mega | quina | lotofacil | duplasena (padrao: mega)
+- loteria: megasena | quina | lotofacil | duplasena (padrao: megasena)
 - ultimos: quantidade de concursos retornados (padrao: todos)
 
 Para /api/scrape-resultado:
 
-- loteria: mega | quina | lotofacil | duplasena (padrao: mega)
+- loteria: megasena | quina | lotofacil | duplasena (padrao: megasena)
 - retorna apenas o ultimo resultado vindo da API da Caixa, sem atualizar arquivos locais
 
 ## Rota de atualizacao com token

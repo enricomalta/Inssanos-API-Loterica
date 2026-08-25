@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 const INPUT_JSON = path.join(
   __dirname,
   "json",
-  "mega.json"
+  "megasena.json"
 );
 
 const INPUT_CSV = path.join(
@@ -22,7 +22,7 @@ const INPUT_CSV = path.join(
 const OUTPUT_JSON = path.join(
   __dirname,
   "output",
-  "mega-atualizado.json"
+  "megasena-atualizado.json"
 );
 
 function toNumber(value, fallback = 0) {
@@ -283,7 +283,7 @@ async function main() {
 
   if (!Array.isArray(existingResults)) {
     throw new Error(
-      "mega.json precisa conter um array."
+      "megasena.json precisa conter um array."
     );
   }
 
@@ -306,7 +306,7 @@ async function main() {
     new Map();
 
   // Primeiro preserva os resultados
-  // que já existem no mega.json.
+  // que já existem no megasena.json.
   for (const result of existingResults) {
     const concurso =
       toNumber(

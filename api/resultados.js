@@ -72,7 +72,7 @@ router.get("/latest", async (req, res) => {
 
 /*
  * OUTRA ROTA EXISTENTE
- * GET /api/resultados?loteria=mega&ultimos=1
+ * GET /api/resultados?loteria=megasena&ultimos=1
  *
  * mantém seu código atual aqui...
  */

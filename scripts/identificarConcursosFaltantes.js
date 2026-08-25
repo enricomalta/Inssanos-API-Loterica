@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 const INPUT_FILE = path.join(
   __dirname,
   "json",
-  "mega.json"
+  "megasena.json"
 );
 
 const OUTPUT_FILE = path.join(
@@ -33,7 +33,7 @@ async function main() {
 
   if (!Array.isArray(data)) {
     throw new Error(
-      "mega.json precisa conter um array."
+      "megasena.json precisa conter um array."
     );
   }
 
@@ -46,7 +46,7 @@ async function main() {
 
   if (concursos.length === 0) {
     throw new Error(
-      "Nenhum concurso válido encontrado no mega.json."
+      "Nenhum concurso válido encontrado no megasena.json."
     );
   }
 
