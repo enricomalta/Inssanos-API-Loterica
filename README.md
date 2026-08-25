@@ -1,6 +1,18 @@
-# Inssanos API
+# Inssanos API de Loterias e Machine Learning
 
-Projeto Node.js para analise de loterias da Caixa com dados locais em JSON e deploy na Vercel.
+Projeto Node.js uma API responsável pela coleta e processamento de resultados oficiais das loterias da CAIXA, além de executar treinamentos, backtests e evolução de modelos de Machine Learning para análise dos resultados.
+
+- Suporte a Mega-Sena, Lotofácil, Quina e Dupla Sena.
+- Descoberta dinâmica da API da CAIXA através do params.txt.
+- Utiliza proxy brasileiro com sessão sticky para realizar as requisições.
+- Normaliza os dados retornados pela CAIXA para um formato padronizado.
+- Atualiza automaticamente os resultados históricos em arquivos JSON.
+- Coleta resultados da Mega-Sena, Lotofácil, Quina e Dupla Sena via Browserless/BrowserQL.
+- Normaliza e mantém o histórico dos concursos.
+- Executa treinamentos e backtests sobre dados históricos.
+- Mantém uma população de modelos e avalia seu desempenho a cada novo concurso.
+- Utiliza seleção, mutação e persistência dos melhores modelos para evolução contínua.
+- Disponibiliza endpoints para consulta dos resultados e execução dos processos de treinamento.
 
 Loterias suportadas:
 
