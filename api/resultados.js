@@ -1,6 +1,7 @@
 import express from "express";
 
 import { loadLotteryResultsWithHash } from "../src/data/loadMegaResults.js";
+import { readR2JsonArray } from "../src/services/r2StorageService.js";
 import { getLotteryConfig } from "../src/config/constants.js";
 import latestHandler from "./resultados/latest.js";
 
@@ -40,11 +41,89 @@ router.get("/latest", async (req, res) => {
 
 
 /*
- * OUTRA ROTA EXISTENTE
- * GET /api/resultados?loteria=megasena&ultimos=1
- *
- * mantém seu código atual aqui...
+ * 
+ * GET /api/resultados?loteria=megasena&concurso=1
  */
+
+/*
+ * GET /api/resultados/concurso?loteria=duplasena&concurso=2999
+ */
+router.get("/concurso", async (req, res) => {
+  const lotteryKey =
+    parseLotteryKey(req.query.loteria);
+
+  const contestNumber =
+    Number(req.query.concurso);
+
+  if (!lotteryKey) {
+    return res.status(400).json({
+      error: "Loteria invalida.",
+      allowed: [...SUPPORTED_LOTTERIES]
+    });
+  }
+
+  if (
+    !Number.isInteger(contestNumber) ||
+    contestNumber <= 0
+  ) {
+    return res.status(400).json({
+      error: "Número do concurso inválido."
+    });
+  }
+
+  const files = {
+    megasena: "megasena.json",
+    quina: "quina.json",
+    lotofacil: "lotofacil.json",
+    duplasena: "duplasena.json"
+  };
+
+  try {
+    console.log(
+      `[CONCURSO] Buscando ${lotteryKey} concurso ${contestNumber}`
+    );
+
+    const contests =
+      await readR2JsonArray(
+        files[lotteryKey]
+      );
+
+    const contest =
+      contests.find(
+        (item) =>
+          Number(item?.concurso) ===
+          contestNumber
+      );
+
+    if (!contest) {
+      return res.status(404).json({
+        error:
+          `Concurso ${contestNumber} não encontrado para ${lotteryKey}.`
+      });
+    }
+
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=0, s-maxage=300, stale-while-revalidate=600"
+    );
+
+    return res.status(200).json(contest);
+
+  } catch (error) {
+    console.error(
+      "[CONCURSO] Erro ao buscar concurso:",
+      error
+    );
+
+    return res.status(500).json({
+      error:
+        "Falha ao obter concurso.",
+      detail:
+        error?.message ??
+        "Erro desconhecido."
+    });
+  }
+});
 
 
 export default router;
