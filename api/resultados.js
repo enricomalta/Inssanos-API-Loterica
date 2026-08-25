@@ -2,6 +2,7 @@ import express from "express";
 
 import { loadLotteryResultsWithHash } from "../src/data/loadMegaResults.js";
 import { getLotteryConfig } from "../src/config/constants.js";
+import latestHandler from "./resultados/latest.js";
 
 const router = express.Router();
 
@@ -33,40 +34,44 @@ function parseLotteryKey(value) {
 /*
  * GET /api/resultados/latest?loteria=megasena
  */
+// router.get("/latest", async (req, res) => {
+//   const lotteryKey = parseLotteryKey(req.query.loteria);
+
+//   if (!lotteryKey) {
+//     return res.status(400).json({
+//       error: "Loteria invalida.",
+//       allowed: [...SUPPORTED_LOTTERIES]
+//     });
+//   }
+
+//   try {
+//     const { contests } = await loadLotteryResultsWithHash(lotteryKey);
+
+//     if (!contests || contests.length === 0) {
+//       return res.status(404).json({
+//         error: `Nenhum concurso encontrado para ${lotteryKey}.`
+//       });
+//     }
+
+//     res.setHeader(
+//       "Cache-Control",
+//       "public, max-age=0, s-maxage=300, stale-while-revalidate=600"
+//     );
+
+//     return res.status(200).json(contests[0]);
+
+//   } catch (error) {
+//     console.error("Erro ao buscar último concurso:", error);
+
+//     return res.status(500).json({
+//       error: "Falha ao obter último concurso.",
+//       detail: error.message
+//     });
+//   }
+// });
+
 router.get("/latest", async (req, res) => {
-  const lotteryKey = parseLotteryKey(req.query.loteria);
-
-  if (!lotteryKey) {
-    return res.status(400).json({
-      error: "Loteria invalida.",
-      allowed: [...SUPPORTED_LOTTERIES]
-    });
-  }
-
-  try {
-    const { contests } = await loadLotteryResultsWithHash(lotteryKey);
-
-    if (!contests || contests.length === 0) {
-      return res.status(404).json({
-        error: `Nenhum concurso encontrado para ${lotteryKey}.`
-      });
-    }
-
-    res.setHeader(
-      "Cache-Control",
-      "public, max-age=0, s-maxage=300, stale-while-revalidate=600"
-    );
-
-    return res.status(200).json(contests[0]);
-
-  } catch (error) {
-    console.error("Erro ao buscar último concurso:", error);
-
-    return res.status(500).json({
-      error: "Falha ao obter último concurso.",
-      detail: error.message
-    });
-  }
+  return latestHandler(req, res);
 });
 
 

@@ -1,5 +1,6 @@
 import {
   readR2JsonArray,
+  readR2Object,
   writeR2Json,
   getR2PublicUrl
 } from "../src/services/r2StorageService.js";
@@ -10,7 +11,9 @@ import {
 
 import {
   shouldCheckLottery,
-  getCacheTTL
+  getCacheTTL,
+  formatDateBR,
+  getNextDrawDate
 } from "../src/lottery/schedule.js";
 
 const BROWSERQL_URL =
@@ -19,7 +22,7 @@ const BROWSERQL_URL =
 const PARAMS_URL =
   "https://loterias.caixa.gov.br/Style%20Library/json/params.txt";
 
-const LOTTERY_SOURCES = {
+export const LOTTERY_SOURCES = {
   megasena: {
     loteria: "megasena",
     pageUrl:
@@ -612,7 +615,62 @@ async function upsertContestInOfficialResults(
   };
 }
 
-async function scrapeAndSaveLottery(
+
+async function updateLotteryMetadata(
+  key,
+  contestNumber
+) {
+  const metadataKey = "metadata.json";
+
+  const rawMetadata =
+    await readR2Object(metadataKey);
+
+  let metadata = {};
+
+  if (rawMetadata) {
+    metadata = JSON.parse(rawMetadata);
+  }
+
+  const now = new Date();
+
+  const nextContest =
+    contestNumber + 1;
+
+  const nextDrawDate =
+    getNextDrawDate(now);
+
+  metadata[key] = {
+    ...(metadata[key] ?? {}),
+    id: key,
+    drawTime:
+      metadata[key]?.drawTime ??
+      "21:00",
+    lastDrawnContest:
+      contestNumber,
+    lastUpdated:
+      new Intl.DateTimeFormat(
+        "pt-BR",
+        {
+          timeZone:
+            "America/Sao_Paulo",
+          dateStyle: "long",
+          timeStyle: "medium"
+        }
+      ).format(now),
+    nextContest,
+    nextDrawDate:
+      formatDateBR(nextDrawDate)
+  };
+
+  await writeR2Json(
+    metadataKey,
+    metadata
+  );
+
+  return metadata[key];
+}
+
+export async function scrapeAndSaveLottery(
   key,
   source
 ) {
@@ -631,6 +689,12 @@ async function scrapeAndSaveLottery(
     await upsertContestInOfficialResults(
       source.outputFile,
       mapped
+    );
+
+  const metadataUpdate =
+    await updateLotteryMetadata(
+      key,
+      mapped.concurso
     );
 
   return {

@@ -41,6 +41,19 @@ function getSaoPauloParts(date = new Date()) {
 }
 
 /**
+ * Formata data no padrão do metadata.json
+ */
+export function formatDateBR(date) {
+  const parts = getSaoPauloParts(date);
+
+  return [
+    String(parts.day).padStart(2, "0"),
+    String(parts.month).padStart(2, "0"),
+    parts.year
+  ].join("/");
+}
+
+/**
  * Cria uma data correspondente ao horário informado
  * usando o timezone de São Paulo.
  */
