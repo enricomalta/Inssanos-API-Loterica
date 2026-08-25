@@ -1,7 +1,7 @@
 import { loadLotteryResultsWithHash } from "../../src/data/loadMegaResults.js";
 
 const LOTTERY_ALIASES = {
-  megasena: "mega",
+  megasena: "megasena",
   quina: "quina",
   lotofacil: "lotofacil",
   duplasena: "duplasena"
