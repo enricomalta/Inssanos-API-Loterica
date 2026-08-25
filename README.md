@@ -104,6 +104,18 @@ Ultimo Resultado Salvo :
 - https://inssanos-api.vercel.app/api/resultados?loteria=lotofacil&ultimos=10
 - https://inssanos-api.vercel.app/api/resultados?loteria=duplasena&ultimos=10
 
+Resultado por concurso:
+- http://localhost:3000/api/resultados/concurso?loteria=megasena&concurso=1
+- http://localhost:3000/api/resultados/concurso?loteria=quina&concurso=1
+- http://localhost:3000/api/resultados/concurso?loteria=lotofacil&concurso=1
+- http://localhost:3000/api/resultados/concurso?loteria=duplasena&concurso=1
+
+Ultimo Resultado no R2 se tiver sorteio faz scrap/atualiza R2 e retorna ultimo:
+- https://inssanos-api.vercel.app/api/resultados/latest?loteria=megasena
+- https://inssanos-api.vercel.app/api/resultados/latest?loteria=quina
+- https://inssanos-api.vercel.app/api/resultados/latest?loteria=lotofacil
+- https://inssanos-api.vercel.app/api/resultados/latest?loteria=duplasena
+
 Resultado Scrap Caixa Oficial:
 - https://inssanos-api.vercel.app/api/scrape-resultado?loteria=megasena
 - https://inssanos-api.vercel.app/api/scrape-resultado?loteria=quina
