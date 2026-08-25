@@ -80,7 +80,7 @@ Rotas locais:
 
 Base URL:
 
-https://inssanos-api.vercel.app
+- https://inssanos-api.vercel.app
 
 Rotas:
 
@@ -104,19 +104,20 @@ Resultado Scrap Caixa Oficial:
 
 Exemplo com parametros:
 
-https://inssanos-api.vercel.app/api/megasena?top=10&ultimos=500&medias=20
+- https://inssanos-api.vercel.app/api/megasena?top=10&ultimos=500&medias=20
 
 Exemplo com horario seedado para predicao alternativa:
 
-https://inssanos-api.vercel.app/api/megasena?top=10&ultimos=500&medias=20&seedAt=2026-05-24T20:00:00-03:00
+- https://inssanos-api.vercel.app/api/megasena?top=10&ultimos=500&medias=20&seedAt=2026-05-24T20:00:00-03:00
+OBS: Query ajustável data, hora com padrão -3 UTC para horários no Brasil -> 2026-05-24 T 20:00 : 00 - 03:00 
 
 Exemplo com seed do horario atual:
 
-https://inssanos-api.vercel.app/api/megasena?top=10&ultimos=500&medias=20&seedMode=now
+- https://inssanos-api.vercel.app/api/megasena?top=10&ultimos=500&medias=20&seedMode=now
 
 Exemplo com seed baseado no proximo sorteio:
 
-https://inssanos-api.vercel.app/api/megasena?top=10&ultimos=500&medias=20&seedMode=nextDraw
+- https://inssanos-api.vercel.app/api/megasena?top=10&ultimos=500&medias=20&seedMode=nextDraw
 
 ## Parametros opcionais
 
