@@ -620,6 +620,9 @@ async function updateLotteryMetadata(
   key,
   contestNumber
 ) {
+  console.log(
+    `[METADATA] INÍCIO | key=${key} | contestNumber=${contestNumber}`
+  );
   const metadataKey = "metadata.json";
 
   const rawMetadata =
@@ -662,11 +665,19 @@ async function updateLotteryMetadata(
       formatDateBR(nextDrawDate)
   };
 
+  console.log(
+    `[METADATA] ESCREVENDO | key=${key}`,
+    JSON.stringify(metadata[key], null, 2)
+  );
+
   await writeR2Json(
     metadataKey,
     metadata
   );
 
+  console.log(
+    `[METADATA] ESCRITO | key=${key} | contest=${metadata[key].lastDrawnContest} | next=${metadata[key].nextContest}`
+  );
   return metadata[key];
 }
 
