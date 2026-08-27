@@ -248,9 +248,13 @@ export default async function handler(
 
     response.setHeader(
       "Cache-Control",
-      "public, max-age=0, s-maxage=300, stale-while-revalidate=600"
+      "no-store, no-cache, must-revalidate, proxy-revalidate"
     );
-
+    response.setHeader(
+      "CDN-Cache-Control",
+      "no-store"
+    );
+    
     /*
      * ============================================================
      * 7. Retorna somente o último concurso
