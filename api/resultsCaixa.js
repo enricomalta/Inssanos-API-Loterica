@@ -11,9 +11,7 @@ import {
 
 import {
   shouldCheckLottery,
-  getCacheTTL,
-  formatDateBR,
-  getNextDrawDate
+  getCacheTTL
 } from "../src/lottery/schedule.js";
 
 const BROWSERQL_URL =
@@ -618,7 +616,8 @@ async function upsertContestInOfficialResults(
 
 async function updateLotteryMetadata(
   key,
-  contestNumber
+  contestNumber,
+  nextDrawDate
 ) {
   console.log(
     `[METADATA] INÍCIO | key=${key} | contestNumber=${contestNumber}`
@@ -639,9 +638,6 @@ async function updateLotteryMetadata(
   const nextContest =
     contestNumber + 1;
 
-  const nextDrawDate =
-    getNextDrawDate(now);
-
   metadata[key] = {
     ...(metadata[key] ?? {}),
     id: key,
@@ -661,8 +657,10 @@ async function updateLotteryMetadata(
         }
       ).format(now),
     nextContest,
-    nextDrawDate:
-      formatDateBR(nextDrawDate)
+    // A Caixa informa a próxima data oficial no ServiceBus. Esse é o
+    // mesmo valor persistido no arquivo da loteria e deve ser a fonte
+    // de verdade do metadata, em vez de uma data calculada pelo calendário.
+    nextDrawDate
   };
 
   console.log(
@@ -705,7 +703,8 @@ export async function scrapeAndSaveLottery(
   const metadataUpdate =
     await updateLotteryMetadata(
       key,
-      mapped.concurso
+      mapped.concurso,
+      mapped.dataProximoConcurso
     );
 
   return {
